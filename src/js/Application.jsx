@@ -8,14 +8,18 @@ import Environment from 'js/Environment';
 const EPSILON = 0.1
 
 export default class Application extends React.Component {
+  episode = [];
   policy = new MutableEpisonlonPolicy(0.1, Board.ACTIONS);
-
   state = {
     game: new Game(Board.YELLOW, 4),
     winner: null,
   }
 
   onColumnClick(column) {
+    if (this.state.winner !== null) {
+      return;
+    }
+
     const { game } = this.state;
     const actions = game.getAvailableActions();
 
@@ -28,15 +32,19 @@ export default class Application extends React.Component {
         winner = myColor;
       } else {
         const agentColor = game.getTurn();
-        const environment = new Environment(game, agentColor);
-        const state = environment.serializeWithAgentColor();
-        const unavailableActions = environment.getUnavailableActions();
-        const agentAction = this.policy.getNextAction(state, unavailableActions);
-        const [ agentX, agentY ] = game.drop(agentAction, agentColor);
-
-        if (game.connects(agentX, agentY, agentColor)) {
+        const state = Environment.serializeWithAgentColor(game);
+        const action = this.policy.getNextAction(state, game.getUnavailableActions());
+        const droppedPoint = game.drop(action, agentColor);
+        const nextState = Environment.serializeWithAgentColor(game);
+        const connects = game.connects(droppedPoint[0], droppedPoint[1], agentColor);
+        const reward = connects ? 1 : 0;
+        if (connects) {
           winner = agentColor;
         }
+
+        console.log('state, action, nextState, reward', state, action, nextState, reward);
+
+        this.episode.push(state, action, nextState, reward);
       }
 
       this.setState({
@@ -44,6 +52,15 @@ export default class Application extends React.Component {
         winner,
       });
     }
+  }
+
+  startNewEpisode() {
+    this.setState({
+      game: new Game(Board.YELLOW, 4),
+      winner: null,
+    });
+
+    this.episode = [];
   }
 
   render() {
@@ -63,6 +80,9 @@ export default class Application extends React.Component {
         />
         <div className='right-statistics'>
           {winText}
+          <div>
+            <button className='rl-button' onClick={() => this.startNewEpisode()}>New Episode</button>
+          </div>
         </div>
       </div>
     );

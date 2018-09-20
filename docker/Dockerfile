@@ -12,6 +12,7 @@ RUN \
 
     curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
     yum -y install nodejs && \
+    npm install -g yarn && \
     chmod +x /init.sh && \
     mkdir ~/.ssh
 
