@@ -1,0 +1,30 @@
+{
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+  ],
+  "parser": "babel-eslint",
+  "plugins": [
+    "react",
+    "class-property"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 7,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "experimentalObjectRestSpread": true,
+      "modules": true,
+      "classes": true,
+      "jsx": true
+    }
+  },
+  "globals": {
+    "Set": true,
+    "console": true,
+    "docuemnt": true,
+    "fetch": true,
+    "window": true,
+    "location": true,
+    "URLSearchParams": true
+  }
+}
