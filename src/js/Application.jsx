@@ -11,7 +11,7 @@ const EPSILON = 0.1
 export default class Application extends React.Component {
   episode = [];
   policy = new MutableEpisonlonPolicy(0.1, Board.ACTIONS);
-  policyUpdater = new OnPolicyFirstVisitMonteCarloControl(this.policy);
+  policyUpdater = new OnPolicyFirstVisitMonteCarloControl(this.policy, 0.1);
   state = {
     game: new Game(Board.YELLOW, 4),
     winner: null,
@@ -30,23 +30,28 @@ export default class Application extends React.Component {
       const state = Environment.serializeWithAgentColor(game);
       const [ x, y ] = game.drop(action, myColor);
       let winner = null;
+      const userWins = game.connects(x, y, myColor);
 
-      if (game.connects(x, y, myColor)) {
+      if (userWins) {
         winner = myColor;
-        this.episode.push({state, action, reward: -1});
+        this.episode.push({state, action, reward: Environment.LOSE_REWARD});
       } else {
         const agentColor = game.getTurn();
         const agentAction = this.policy.getNextAction(state, game.getUnavailableActions());
         const droppedPoint = game.drop(agentAction, agentColor);
         const nextState = Environment.serializeWithAgentColor(game);
-        const connects = game.connects(droppedPoint[0], droppedPoint[1], agentColor);
-        const reward = connects ? 1 : 0;
-        if (connects) {
+        const agentWins = game.connects(droppedPoint[0], droppedPoint[1], agentColor);
+        let reward;
+
+        if (agentWins) {
           winner = agentColor;
+          reward = Environment.WIN_REWARD;
+        } else {
+          reward = Environment.DEFAULT_REWARD;
         }
 
         this.episode.push({
-          state: Environment.serializeWithAgentColor(game),
+          state: Environment.serializeWithAgentColor(game, agentColor),
           action: agentAction,
           reward
         });
@@ -57,6 +62,8 @@ export default class Application extends React.Component {
       }
 
       const final = this.episode[this.episode.length - 1];
+
+      console.log(this.policy);
 
       this.setState({
         game: game.clone(),
@@ -76,6 +83,8 @@ export default class Application extends React.Component {
 
   render() {
     let winText = '';
+
+    Environment.getActionsAvailableInState('122222022222222222222222222222222222222222');
 
     if (this.state.winner === Board.YELLOW) {
       winText = 'Yellow wins';

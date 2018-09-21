@@ -80,7 +80,7 @@ export default class Game {
         );
 
         if (points.length === this.lengthToWin) {
-          return true;
+          return points;
         }
       }
     }

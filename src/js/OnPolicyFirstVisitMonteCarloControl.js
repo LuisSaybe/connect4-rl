@@ -1,6 +1,10 @@
+import Environment from 'js/Environment';
+import StochasticHelper from 'js/StochasticHelper';
+
 export default class OnPolicyFirstVisitMonteCarloControl {
-  constructor(policy, gamma = 0) {
+  constructor(policy, epsilon, gamma = 0) {
     this.policy = policy;
+    this.epsilon = epsilon;
     this.gamma = gamma;
     this.returns = {};
   }
@@ -16,7 +20,6 @@ export default class OnPolicyFirstVisitMonteCarloControl {
   }
 
   update(episode) {
-    const episodeWithoutLastStep = episode.slice(0, episode.length - 1);
     const stateActionsToReturns = {};
     let episodeReturns = 0;
 
@@ -26,15 +29,42 @@ export default class OnPolicyFirstVisitMonteCarloControl {
 
       episodeReturns = this.gamma * episodeReturns + stepAfter.reward;
 
-      const stepDidAppearInSeries = OnPolicyFirstVisitMonteCarloControl.stepAppearsInSeries(step, episodeWithoutLastStep);
+      const previousSARs = episode.slice(0, index);
+      const stepDidAppearInSeries = OnPolicyFirstVisitMonteCarloControl.stepAppearsInSeries(step, previousSARs);
 
       if (!stepDidAppearInSeries) {
         this.appendReturn(episodeReturns);
 
         const availableActions = Environment.getActionsAvailableInState(step.state);
+        const actionReturns = availableActions.map(action => {
+        const returns = this.getReturns(step.state, action);
+
+          if (returns.length === 0) {
+            returns.push(Math.random());
+          }
+
+          const average = StochasticHelper.average(returns);
+          return { average, action };
+        });
+
+        actionReturns.sort((a, b) => a.average - b.average)
+        const bestAction = actionReturns[actionReturns.length - 1].action;
+
+        let sum = 0;
 
         for (const action of availableActions) {
-          console.log('action', action);
+          let probability;
+          const denominator = this.epsilon / availableActions.length;
+
+          if (bestAction === action) {
+            probability = 1 - this.epsilon + denominator;
+          } else {
+            probability = denominator;
+          }
+
+          sum += probability
+
+          this.policy.setProbabilities(step.state, probability);
         }
       }
     }
@@ -52,5 +82,25 @@ export default class OnPolicyFirstVisitMonteCarloControl {
     }
 
     stateMap[action].push(return_instance);
+  }
+
+  getReturns(state, action) {
+    if (!this.returns.hasOwnProperty(state)) {
+      this.returns[state] = {};
+    }
+
+    const stateMap = this.returns[state];
+
+    if (!stateMap.hasOwnProperty(action)) {
+      stateMap[action] = [];
+    }
+
+    const returns = stateMap[action];
+
+    if (returns.length === 0) {
+      returns.push(Math.random());
+    }
+
+    return returns;
   }
 }

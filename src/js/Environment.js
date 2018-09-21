@@ -5,6 +5,9 @@ export default class Environment {
   static AGENT_COLOR = 0;
   static ADVERSARY_COLOR = 1;
   static NONE = 2;
+  static LOSE_REWARD = -1;
+  static WIN_REWARD = 1;
+  static DEFAULT_REWARD = 0;
 
   static getActionsAvailableInState(state) {
     let stateIndex = 0;
@@ -12,22 +15,19 @@ export default class Environment {
     const board = new Board();
     const agentColor = Board.YELLOW;
 
-    for (let row = 0; row < Board.ROWS; row++) {
-      for (let column = 0; column < Board.COLUMNS; column++) {
-        const color = state[stateIndex];
-        let derivedColor;
+    for (let index = 0; index < state.length; index++) {
+      let color;
+      const environmentColor = Number(state[index]);
 
-        if (color === Environment.AGENT_COLOR) {
-          derivedColor = Board.YELLOW;
-        } else if (color === Environment.NONE) {
-          derivedColor = Board.NONE;
-        } else {
-          derivedColor = Environment.ADVERSARY_COLOR;
-        }
-
-        board.place(row, column, derivedColor);
-        stateIndex++;
+      if (environmentColor === Environment.AGENT_COLOR) {
+        color = Board.YELLOW;
+      } else if (environmentColor === Environment.ADVERSARY_COLOR) {
+        color = Board.RED;
+      } else if (environmentColor === Environment.NONE) {
+        color = Board.NONE;
       }
+
+      board.place(Math.floor(index / Board.COLUMNS), index % Board.COLUMNS, color);
     }
 
     return board.getAvailableActions();

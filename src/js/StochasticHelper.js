@@ -3,6 +3,16 @@ export default class StochasticHelper {
     return subject[Math.floor(Math.random() * subject.length)];;
   }
 
+  static average(array) {
+    let sum = 0;
+
+    for (const number of array) {
+      sum += number;
+    }
+
+    return sum / array.length;
+  }
+
   static getRandomProbabilityDistribution(length) {
     const max = 20;
     const result = [];
