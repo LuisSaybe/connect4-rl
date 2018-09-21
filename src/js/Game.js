@@ -12,15 +12,7 @@ export default class Game {
   }
 
   getAvailableActions() {
-    const actions = [];
-
-    for (let column = 0; column < this.getColumns(); column++) {
-      if (this.get(this.getRows() - 1, column) === Board.NONE) {
-        actions.push(column);
-      }
-    }
-
-    return actions;
+    return this.board.getAvailableActions();
   }
 
   getUnavailableActions() {
@@ -57,6 +49,12 @@ export default class Game {
 
   getTurn() {
     return this.turn;
+  }
+
+  static deserialize() {
+    const game = new Game();
+
+    return game;
   }
 
   connects(x, y, color) {

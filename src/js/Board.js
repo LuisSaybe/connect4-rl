@@ -14,6 +14,18 @@ export default class Board {
     }
   }
 
+  getAvailableActions() {
+    const actions = [];
+
+    for (let column = 0; column < Board.COLUMNS; column++) {
+      if (this.get(Board.ROWS - 1, column) === Board.NONE) {
+        actions.push(column);
+      }
+    }
+
+    return actions;
+  }
+
   get(x, y) {
     return this.board[x][y];
   }
