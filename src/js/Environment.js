@@ -9,6 +9,10 @@ export default class Environment {
   static WIN_REWARD = 1;
   static DEFAULT_REWARD = 0;
 
+  static getActions() {
+    return Array.from(new Array(Board.COLUMNS)).map((_, i) => i);
+  }
+
   static getActionsAvailableInState(state) {
     let stateIndex = 0;
 

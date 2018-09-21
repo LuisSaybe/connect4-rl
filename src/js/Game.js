@@ -59,9 +59,10 @@ export default class Game {
 
   connects(x, y, color) {
     const directions = [
-        [-1 , -1],
-        [-1, 0],
-        [ -1, 1 ]
+        [ -1 , -1 ],
+        [ -1, 0 ],
+        [ -1, 1 ],
+        [ 0, -1 ]
     ];
 
     for (const direction of directions) {

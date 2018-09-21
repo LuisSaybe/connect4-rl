@@ -50,21 +50,22 @@ export default class OnPolicyFirstVisitMonteCarloControl {
         actionReturns.sort((a, b) => a.average - b.average)
         const bestAction = actionReturns[actionReturns.length - 1].action;
 
-        let sum = 0;
-
-        for (const action of availableActions) {
+        for (const action of Environment.getActions()) {
           let probability;
-          const denominator = this.epsilon / availableActions.length;
 
-          if (bestAction === action) {
-            probability = 1 - this.epsilon + denominator;
+          if (availableActions.includes(action)) {
+            const denominator = this.epsilon / availableActions.length;
+
+            if (bestAction === action) {
+              probability = 1 - this.epsilon + denominator;
+            } else {
+              probability = denominator;
+            }
           } else {
-            probability = denominator;
+            probability = 0;
           }
 
-          sum += probability
-
-          this.policy.setProbabilities(step.state, probability);
+          this.policy.setProbabilities(step.state, action, probability);
         }
       }
     }

@@ -15,6 +15,9 @@ export default class Application extends React.Component {
   state = {
     game: new Game(Board.YELLOW, 4),
     winner: null,
+    redWins: 0,
+    yellowWins: 0,
+    episodes: 0,
   }
 
   onColumnClick(action) {
@@ -61,13 +64,22 @@ export default class Application extends React.Component {
         this.policyUpdater.update(this.episode);
       }
 
-      const final = this.episode[this.episode.length - 1];
+      let redWins = this.state.redWins;
+      let yellowWins = this.state.yellowWins;
 
-      console.log(this.policy);
+      if (winner === Board.RED) {
+        redWins++;
+      }
+
+      if (winner === Board.YELLOW) {
+        yellowWins++;
+      }
 
       this.setState({
         game: game.clone(),
         winner,
+        redWins,
+        yellowWins,
       });
     }
   }
@@ -76,6 +88,7 @@ export default class Application extends React.Component {
     this.setState({
       game: new Game(Board.YELLOW, 4),
       winner: null,
+      episodes: this.state.episodes + 1
     });
 
     this.episode = [];
@@ -83,8 +96,6 @@ export default class Application extends React.Component {
 
   render() {
     let winText = '';
-
-    Environment.getActionsAvailableInState('122222022222222222222222222222222222222222');
 
     if (this.state.winner === Board.YELLOW) {
       winText = 'Yellow wins';
@@ -99,7 +110,9 @@ export default class Application extends React.Component {
           onColumnClick={column => this.onColumnClick(column)}
         />
         <div className='right-statistics'>
-          {winText}
+          <p>Episodes: {this.state.episodes}</p>
+          <p>Red Wins: {this.state.redWins}</p>
+          <p>Yellow Wins: {this.state.yellowWins}</p>
           <div>
             <button className='rl-button' onClick={() => this.startNewEpisode()}>New E pisode</button>
           </div>
