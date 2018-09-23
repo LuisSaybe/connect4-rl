@@ -1,6 +1,6 @@
 export default class StochasticHelper {
   static arrayRandom(subject) {
-    return subject[Math.floor(Math.random() * subject.length)];;
+    return subject[Math.floor(Math.random() * subject.length)];
   }
 
   static average(array) {
@@ -31,16 +31,40 @@ export default class StochasticHelper {
   }
 
   static selectFromProbabilityDistribution(distribution, selections, disallow = []) {
+      const newDistribution = [];
+      const newSelections = [];
+      let contributions = 0;
+      let contributionsLength = 0;
+
+      for (let index = 0; index < selections.length; index++) {
+        const selecton = selections[index];
+        const probability = distribution[index];
+
+        if (disallow.includes(selecton)) {
+          contributions += probability;
+          contributionsLength++;
+        } else {
+          newDistribution.push(probability);
+          newSelections.push(selecton);
+        }
+      }
+
+      for (let index = 0; index < newDistribution.length; index++) {
+        newDistribution[index] += contributions / contributionsLength;
+      }
+
+      return this.selectFromProbabilityDistributionHelper(newDistribution, newSelections);
+  }
+
+  static selectFromProbabilityDistributionHelper(distribution, selections) {
       const randomNumber = Math.random();
       let s = 0;
-      const set = new Set();
-      disallow.forEach(subject => set.add(subject));
 
       for (let i = 0; i < selections.length - 1; i++) {
           s += distribution[i];
           const selection = selections[i];
 
-          if (randomNumber < s && !set.has(selection)) {
+          if (randomNumber < s) {
               return selection;
           }
       }

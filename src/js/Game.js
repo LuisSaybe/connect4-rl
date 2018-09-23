@@ -37,6 +37,7 @@ export default class Game {
 
   drop(column, color) {
     for (let row = 0; row < this.getRows(); row++) {
+
       if (this.get(row, column) === Board.NONE) {
         this.board.place(row, column, color);
         this.turn = this.turn === Board.YELLOW ? Board.RED : Board.YELLOW;

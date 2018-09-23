@@ -4,7 +4,7 @@ export default class Board {
   static RED = 2;
   static ROWS = 6;
   static COLUMNS = 7;
-  static ACTIONS = Array.from(new Array(Board.COLUMNS)).map((_, i) => i);
+  static ACTIONS = [0, 1, 2, 3, 4, 5, 6];
 
   constructor() {
     this.board = new Array(Board.ROWS);

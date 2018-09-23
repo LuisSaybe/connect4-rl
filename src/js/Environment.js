@@ -1,4 +1,3 @@
-import Game from 'js/Game';
 import Board from 'js/Board';
 
 export default class Environment {
@@ -10,14 +9,11 @@ export default class Environment {
   static DEFAULT_REWARD = 0;
 
   static getActions() {
-    return Array.from(new Array(Board.COLUMNS)).map((_, i) => i);
+    return Board.ACTIONS;
   }
 
   static getActionsAvailableInState(state) {
-    let stateIndex = 0;
-
     const board = new Board();
-    const agentColor = Board.YELLOW;
 
     for (let index = 0; index < state.length; index++) {
       let color;

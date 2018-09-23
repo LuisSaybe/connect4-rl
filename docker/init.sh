@@ -15,9 +15,12 @@ if [ ! -d $SOURCE_DIRECTORY ]; then
   cd $SOURCE_DIRECTORY
   yarn
   npm run build
-  nginx -c /root/nginx.conf -g 'daemon off;'
+  nginx -c /root/nginx.conf
+  node server.js
 elif [ -z $WATCH ]; then
-  nginx -c /root/nginx.conf -g 'daemon off;'
+  cd $SOURCE_DIRECTORY
+  nginx -c /root/nginx.conf
+  node server.js
 else
   cd $SOURCE_DIRECTORY
   rm -rf node_modules

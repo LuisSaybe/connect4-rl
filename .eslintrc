@@ -21,10 +21,18 @@
   "globals": {
     "Set": true,
     "console": true,
-    "docuemnt": true,
+    "document": true,
     "fetch": true,
     "window": true,
     "location": true,
     "URLSearchParams": true
+  },
+  "settings": {
+    "react": {
+      "version": "16.5.2"
+    }
+  },
+  "rules": {
+    "no-console": 0
   }
 }

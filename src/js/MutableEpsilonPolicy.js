@@ -1,4 +1,3 @@
-import Environment from 'js/Environment';
 import StochasticHelper from 'js/StochasticHelper';
 
 export default class MutableEpsilonlonPolicy {
@@ -6,6 +5,10 @@ export default class MutableEpsilonlonPolicy {
     this.epsilon = epsilon;
     this.policy = {};
     this.actions = actions;
+  }
+
+  setEpsilon(epsilon) {
+    this.epsilon = epsilon;
   }
 
   getActionProbabilities(state) {
@@ -17,25 +20,28 @@ export default class MutableEpsilonlonPolicy {
     return this.policy[state];
   }
 
+  getProbability(state, action) {
+    return this.policy[state][action];
+  }
+
   getNextAction(state, unavailableActions) {
     const random = Math.random() < this.epsilon;
 
     if (random) {
-      const unavailableActionsAsSet = new Set();
-      unavailableActions.forEach(action => unavailableActionsAsSet.add(action));
-      const selection = this.actions.filter(action => !unavailableActionsAsSet.has(action));
+      const selection = this.actions.filter(action => !unavailableActions.includes(action));
       return StochasticHelper.arrayRandom(selection);
     }
 
     const probabilities = this.getActionProbabilities(state);
-    const probabilitiesAsArray = Object.keys(probabilities)
-      .map(action => probabilities[action]);
-
-    return StochasticHelper.selectFromProbabilityDistribution(
+    const actions = Object.keys(probabilities).map(action => Number(action));
+    const probabilitiesAsArray = actions.map(action => probabilities[action]);
+    const result = StochasticHelper.selectFromProbabilityDistribution(
       probabilitiesAsArray,
-      this.actions,
+      actions,
       unavailableActions
     );
+
+    return result;
   }
 
   setProbabilities(state, action, probability) {

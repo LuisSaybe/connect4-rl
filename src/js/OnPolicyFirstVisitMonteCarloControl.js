@@ -1,26 +1,18 @@
+import Board from 'js/Board';
+import Game from 'js/Game';
 import Environment from 'js/Environment';
-import StochasticHelper from 'js/StochasticHelper';
+import MutableEpsilonPolicy from 'js/MutableEpsilonPolicy';
+import Average from 'js/Average';
 
 export default class OnPolicyFirstVisitMonteCarloControl {
-  constructor(policy, epsilon, gamma = 0) {
+  constructor(policy, epsilon, gamma = 1) {
     this.policy = policy;
     this.epsilon = epsilon;
     this.gamma = gamma;
     this.returns = {};
   }
 
-  static stepAppearsInSeries(step, series) {
-    for (const { state, action, reward } of series) {
-      if (step.state === state && step.action === step.action) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   update(episode) {
-    const stateActionsToReturns = {};
     let episodeReturns = 0;
 
     for (let index = episode.length - 2; index > -1; index--) {
@@ -33,22 +25,17 @@ export default class OnPolicyFirstVisitMonteCarloControl {
       const stepDidAppearInSeries = OnPolicyFirstVisitMonteCarloControl.stepAppearsInSeries(step, previousSARs);
 
       if (!stepDidAppearInSeries) {
-        this.appendReturn(episodeReturns);
+        this.appendAverageReturn(step.state, step.action, episodeReturns);
 
         const availableActions = Environment.getActionsAvailableInState(step.state);
-        const actionReturns = availableActions.map(action => {
-        const returns = this.getReturns(step.state, action);
+        const actionReturns = availableActions
+          .map(action => {
+            const average = this.getAverageReturn(step.state, action);
+            return { average: average.average, action };
+          })
+          .sort((a, b) => a.average - b.average);
 
-          if (returns.length === 0) {
-            returns.push(Math.random());
-          }
-
-          const average = StochasticHelper.average(returns);
-          return { average, action };
-        });
-
-        actionReturns.sort((a, b) => a.average - b.average)
-        const bestAction = actionReturns[actionReturns.length - 1].action;
+        const { action: bestAction } = actionReturns[actionReturns.length - 1];
 
         for (const action of Environment.getActions()) {
           let probability;
@@ -71,7 +58,7 @@ export default class OnPolicyFirstVisitMonteCarloControl {
     }
   }
 
-  appendReturn(state, action, return_instance) {
+  appendAverageReturn(state, action, returnInstance) {
     if (!this.returns.hasOwnProperty(state)) {
       this.returns[state] = {};
     }
@@ -79,13 +66,13 @@ export default class OnPolicyFirstVisitMonteCarloControl {
     const stateMap = this.returns[state];
 
     if (!stateMap.hasOwnProperty(action)) {
-      stateMap[action] = [];
+      stateMap[action] = new Average();
     }
 
-    stateMap[action].push(return_instance);
+    stateMap[action].append(returnInstance);
   }
 
-  getReturns(state, action) {
+  getAverageReturn(state, action) {
     if (!this.returns.hasOwnProperty(state)) {
       this.returns[state] = {};
     }
@@ -93,15 +80,86 @@ export default class OnPolicyFirstVisitMonteCarloControl {
     const stateMap = this.returns[state];
 
     if (!stateMap.hasOwnProperty(action)) {
-      stateMap[action] = [];
+      stateMap[action] = new Average();
     }
 
-    const returns = stateMap[action];
+    return stateMap[action];
+  }
 
-    if (returns.length === 0) {
-      returns.push(Math.random());
+  static getAgent(episodes, measurementCount = 20) {
+    const epsilon = 0.1;
+    const agent = new MutableEpsilonPolicy(epsilon, Board.ACTIONS);
+    const trainer = new MutableEpsilonPolicy(epsilon, Board.ACTIONS);
+    const agentColor = Board.YELLOW;
+    const trainerColor = Board.RED;
+    const agentUpdater = new OnPolicyFirstVisitMonteCarloControl(agent, epsilon);
+
+    const measurements = Array.from(new Array(measurementCount)).map(() => ({ agentWins: 0, trainerWins: 0 }))
+    const getMeasurementIndex = (current, total, partitions) => {
+      return Math.floor(current / total * partitions);
+    };
+
+    for (let index = 0; index < episodes; index++) {
+      const game = new Game(trainerColor, 4);
+      const episode = [];
+      let previousAgentAction = null;
+
+      if (index % 10000 === 0) {
+        console.log(index / episodes);
+      }
+
+      while (game.getAvailableActions().length > 0) {
+        const trainerAction = trainer.getNextAction(
+          Environment.serializeWithAgentColor(game, trainerColor),
+          game.getUnavailableActions()
+        );
+
+        const [ trainerX, trainerY ] = game.drop(trainerAction, trainerColor);
+        const state = Environment.serializeWithAgentColor(game, agentColor);
+
+        if (game.connects(trainerX, trainerY, trainerColor)) {
+          episode.push({state, action: previousAgentAction, reward: Environment.LOSE_REWARD});
+
+          const measurementIndex = getMeasurementIndex(index, episodes, measurements.length);
+          measurements[measurementIndex].trainerWins++;
+
+          break;
+        } else if (previousAgentAction !== null) {
+          episode.push({state, action: previousAgentAction, reward: Environment.DEFAULT_REWARD});
+        }
+
+        const agentAction = agent.getNextAction(
+          Environment.serializeWithAgentColor(game, agentColor),
+          game.getUnavailableActions()
+        );
+        previousAgentAction = agentAction;
+
+        const [ agentX, agentY ] = game.drop(agentAction, agentColor);
+
+        if (game.connects(agentX, agentY, agentColor)) {
+          const state = Environment.serializeWithAgentColor(game, agentColor);
+          episode.push({state, action: agentAction, reward: Environment.WIN_REWARD});
+
+          const measurementIndex = getMeasurementIndex(index, episodes, measurements.length);
+          measurements[measurementIndex].agentWins++;
+
+          break;
+        }
+      }
+
+      agentUpdater.update(episode);
     }
 
-    return returns;
+    return { statistics: measurements, agent };
+  }
+
+  static stepAppearsInSeries(step, series) {
+    for (const { state, action } of series) {
+      if (step.state === state && step.action === action) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
