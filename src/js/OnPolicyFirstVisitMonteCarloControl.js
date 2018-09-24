@@ -1,7 +1,4 @@
-import Board from 'js/Board';
-import Game from 'js/Game';
 import Environment from 'js/Environment';
-import MutableEpsilonPolicy from 'js/MutableEpsilonPolicy';
 import Average from 'js/Average';
 
 export default class OnPolicyFirstVisitMonteCarloControl {
@@ -84,73 +81,6 @@ export default class OnPolicyFirstVisitMonteCarloControl {
     }
 
     return stateMap[action];
-  }
-
-  static getAgent(episodes, measurementCount = 20) {
-    const epsilon = 0.1;
-    const agent = new MutableEpsilonPolicy(epsilon, Board.ACTIONS);
-    const trainer = new MutableEpsilonPolicy(epsilon, Board.ACTIONS);
-    const agentColor = Board.YELLOW;
-    const trainerColor = Board.RED;
-    const agentUpdater = new OnPolicyFirstVisitMonteCarloControl(agent, epsilon);
-
-    const measurements = Array.from(new Array(measurementCount)).map(() => ({ agentWins: 0, trainerWins: 0 }))
-    const getMeasurementIndex = (current, total, partitions) => {
-      return Math.floor(current / total * partitions);
-    };
-
-    for (let index = 0; index < episodes; index++) {
-      const game = new Game(trainerColor, 4);
-      const episode = [];
-      let previousAgentAction = null;
-
-      if (index % 10000 === 0) {
-        console.log(index / episodes);
-      }
-
-      while (game.getAvailableActions().length > 0) {
-        const trainerAction = trainer.getNextAction(
-          Environment.serializeWithAgentColor(game, trainerColor),
-          game.getUnavailableActions()
-        );
-
-        const [ trainerX, trainerY ] = game.drop(trainerAction, trainerColor);
-        const state = Environment.serializeWithAgentColor(game, agentColor);
-
-        if (game.connects(trainerX, trainerY, trainerColor)) {
-          episode.push({state, action: previousAgentAction, reward: Environment.LOSE_REWARD});
-
-          const measurementIndex = getMeasurementIndex(index, episodes, measurements.length);
-          measurements[measurementIndex].trainerWins++;
-
-          break;
-        } else if (previousAgentAction !== null) {
-          episode.push({state, action: previousAgentAction, reward: Environment.DEFAULT_REWARD});
-        }
-
-        const agentAction = agent.getNextAction(
-          Environment.serializeWithAgentColor(game, agentColor),
-          game.getUnavailableActions()
-        );
-        previousAgentAction = agentAction;
-
-        const [ agentX, agentY ] = game.drop(agentAction, agentColor);
-
-        if (game.connects(agentX, agentY, agentColor)) {
-          const state = Environment.serializeWithAgentColor(game, agentColor);
-          episode.push({state, action: agentAction, reward: Environment.WIN_REWARD});
-
-          const measurementIndex = getMeasurementIndex(index, episodes, measurements.length);
-          measurements[measurementIndex].agentWins++;
-
-          break;
-        }
-      }
-
-      agentUpdater.update(episode);
-    }
-
-    return { statistics: measurements, agent };
   }
 
   static stepAppearsInSeries(step, series) {

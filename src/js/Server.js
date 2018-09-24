@@ -1,5 +1,5 @@
 import express from 'express';
-import OnPolicyFirstVisitMonteCarloControl from 'js/OnPolicyFirstVisitMonteCarloControl';
+import Connect4MonteCarloTrainer from 'js/Connect4MonteCarloTrainer';
 import fs from 'fs';
 
 const app = express();
@@ -8,18 +8,10 @@ app.get('/', (req, res) => res.send('Hello World!'));
 
 app.get('/train', (_, res) => {
   res.status(200).send('training started!');
+  const result = Connect4MonteCarloTrainer.getPolicy(Math.pow(10, 6));
+  console.log('training finished');
 
-  const episodes = Math.pow(10, 6);
-  const start = new Date();
-  const result = OnPolicyFirstVisitMonteCarloControl.getAgent(episodes);
-  const duration = new Date() - start;
-  const data = {
-    ...result,
-    duration,
-    episodes,
-  };
-
-  fs.writeFile('output/output.json', JSON.stringify(data), 'utf8', () => {
+  fs.writeFile('output/output.json', JSON.stringify(result), 'utf8', () => {
     console.log('finished writing output.json');
   });
 });

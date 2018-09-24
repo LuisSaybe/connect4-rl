@@ -14,10 +14,16 @@ docker build --rm -t connect4-rl .
 docker run -it -p 80:80 -p 8080:8080 --rm -v $(pwd):/root/connect4-rl --name connect4-rl connect4-rl
 ```
 
-### watch for changes
+### watch for web changes
 
 ```sh
-npm run watch
+npm run watch-web
+```
+
+### watch for server changes
+
+```sh
+npm run watch-server
 ```
 
 ### run from github

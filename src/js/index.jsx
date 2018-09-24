@@ -7,14 +7,13 @@ import Board from 'js/Board';
 fetch('http://127.0.0.1/output/output.json')
   .then(r => r.json())
   .then(r => {
-    const { statistics, agent } = r;
-    console.log('statistics', statistics);
+    const { policy } = r;
 
-    const policy = new MutableEpsilonPolicy(0, Board.ACTIONS);
-    policy.policy = agent.policy;
+    const epsilonPolicy = new MutableEpsilonPolicy(0, Board.ACTIONS);
+    epsilonPolicy.policy = policy.policy;
 
-    console.log('policy', policy);
+    console.log('states', Object.keys(epsilonPolicy.policy).length);
 
     const rootDiv = document.querySelector('body > div');
-    ReactDOM.render(<Application policy={policy} />, rootDiv);
+    ReactDOM.render(<Application policy={epsilonPolicy} />, rootDiv);
   });
