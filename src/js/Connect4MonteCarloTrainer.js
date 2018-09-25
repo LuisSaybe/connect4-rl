@@ -11,26 +11,28 @@ export default class Connect4MonteCarloTrainer {
     let agentPolicy = new MutableEpsilonPolicy(epsilon, Board.ACTIONS);
     let opponentPolicy = new MutableEpsilonPolicy(0, Board.ACTIONS);
     const updater = new OnPolicyFirstVisitMonteCarloControl(agentPolicy, epsilon);
-    const episodes = [];
 
     let agentWins = 0;
+    let opponentWins = 0;
     let measurements = [];
-    const measureEvery = 10000;
+    const measureEvery = Math.pow(10, 4);
 
     for (let index = 0; index < episodesCount; index++) {
       if (index % measureEvery === 0 && index !== 0) {
         measurements.push({
-          winRate: agentWins / measureEvery,
+          agentWins,
+          opponentWins,
           episode: index,
         });
 
-        console.log(measurements[measurements.length - 1])
-
         agentWins = 0;
+        opponentWins = 0;
+
+        console.log('measurements', measurements[measurements.length - 1]);
       }
 
-      const firstColor = index % 2 === 0 ? Board.RED : Board.YELLOW;
-      const { agentWin, episode } = Connect4MonteCarloTrainer.collectEpisode(
+      const firstColor = index % 2 == 0 ? Board.YELLOW : Board.RED;
+      const { agentWin, opponentWin, episode } = Connect4MonteCarloTrainer.collectEpisode(
         agentPolicy,
         opponentPolicy,
         agentColor,
@@ -41,12 +43,16 @@ export default class Connect4MonteCarloTrainer {
         agentWins++;
       }
 
-      episodes.push(episode);
+      if (opponentWin) {
+        opponentWins++;
+      }
+
       updater.update(episode);
     }
 
     return {
-      policy: agentPolicy
+      policy: agentPolicy,
+      measurements
     };
   }
 

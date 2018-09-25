@@ -12,8 +12,6 @@ fetch('http://127.0.0.1/output/output.json')
     const epsilonPolicy = new MutableEpsilonPolicy(0, Board.ACTIONS);
     epsilonPolicy.policy = policy.policy;
 
-    console.log('states', Object.keys(epsilonPolicy.policy).length);
-
     const rootDiv = document.querySelector('body > div');
     ReactDOM.render(<Application policy={epsilonPolicy} />, rootDiv);
   });

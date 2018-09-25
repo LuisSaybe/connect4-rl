@@ -49,8 +49,10 @@ export default class StochasticHelper {
         }
       }
 
+      const contribution = contributionsLength === 0 ? 0 : contributions / contributionsLength;
+
       for (let index = 0; index < newDistribution.length; index++) {
-        newDistribution[index] += contributions / contributionsLength;
+        newDistribution[index] += contribution;
       }
 
       return this.selectFromProbabilityDistributionHelper(newDistribution, newSelections);
