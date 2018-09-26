@@ -8,7 +8,7 @@ app.get('/', (req, res) => res.send('Hello World!'));
 
 app.get('/train', (_, res) => {
   res.status(200).send('training started!');
-  const result = Connect4MonteCarloTrainer.getPolicy(Math.pow(10, 6));
+  const result = Connect4MonteCarloTrainer.getPolicy(10, Math.pow(10, 5), 0.1);
   console.log('training finished');
 
   fs.writeFile('output/output.json', JSON.stringify(result), 'utf8', () => {
