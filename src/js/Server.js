@@ -1,14 +1,18 @@
 import express from 'express';
+import mongodb from 'mongodb';
 import Connect4MonteCarloTrainer from 'js/Connect4MonteCarloTrainer';
+import DatabaseMutableEpisolonPolicy from 'js/DatabaseMutableEpisolonPolicy';
 import fs from 'fs';
 
 const app = express();
 
 app.get('/', (req, res) => res.send('Hello World!'));
 
-app.get('/train', (_, res) => {
+app.get('/train/:episodes', (req, res) => {
   res.status(200).send('training started!');
-  const result = Connect4MonteCarloTrainer.getPolicy(10, Math.pow(10, 5), 0.1);
+  const episodes = Number(req.params.episodes);
+  console.log('started training with ' + episodes);
+  const result = Connect4MonteCarloTrainer.getPolicy(1, episodes, 0.1);
   console.log('training finished');
 
   fs.writeFile('output/output.json', JSON.stringify(result), 'utf8', () => {
@@ -16,5 +20,15 @@ app.get('/train', (_, res) => {
   });
 });
 
+const run = () => {
+  mongodb.MongoClient.connect('mongodb://mongo:27017', (err, client) => {
+    const db = client.db('connect4-js');
 
-export default app;
+    const policy = new DatabaseMutableEpisolonPolicy(0.1, [0, 1, 2, 3, 4, 5, 6], '1234', db);
+    console.log(policy);
+
+    client.close();
+  });
+};
+
+export default run;

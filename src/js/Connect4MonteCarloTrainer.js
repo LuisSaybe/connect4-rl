@@ -8,7 +8,7 @@ export default class Connect4MonteCarloTrainer {
   static getPolicy(matches, episodesPerMatch, epsilon) {
     let opponentPolicy = new MutableEpsilonPolicy(0, Board.ACTIONS);
 
-    for (let index = 0; index < 10; index++) {
+    for (let index = 0; index < matches; index++) {
       console.log('match ' + index);
 
       const { policy } = Connect4MonteCarloTrainer.getPolicyFromCompetition(

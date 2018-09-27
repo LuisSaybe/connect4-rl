@@ -47,7 +47,8 @@ module.exports = function() {
                   'require',
                   'module',
                   'console',
-                  '__dirname'
+                  '__dirname',
+                  'Promise',
                 ],
                 baseConfig: {
                   extends: ['eslint:recommended']
