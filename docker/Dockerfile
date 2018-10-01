@@ -10,7 +10,7 @@ RUN \
     yum -y update && \
     yum install -y wget nginx-1.14.0 git-all curl nano which man manpages && \
 
-    curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
+    curl --silent --location https://rpm.nodesource.com/setup_10.x | bash - && \
     yum -y install nodejs && \
     npm install -g yarn && \
     chmod +x /init.sh && \

@@ -9,7 +9,7 @@ export default class OnPolicyFirstVisitMonteCarloControl {
     this.returns = {};
   }
 
-  update(episode) {
+  async update(episode) {
     let episodeReturns = 0;
 
     for (let index = episode.length - 2; index > -1; index--) {
@@ -34,7 +34,7 @@ export default class OnPolicyFirstVisitMonteCarloControl {
 
         const { action: bestAction } = actionReturns[actionReturns.length - 1];
 
-        for (const action of Environment.getActions()) {
+        const futures = Environment.getActions().map(action => {
           let probability;
 
           if (availableActions.includes(action)) {
@@ -49,8 +49,10 @@ export default class OnPolicyFirstVisitMonteCarloControl {
             probability = 0;
           }
 
-          this.policy.setProbabilities(step.state, action, probability);
-        }
+          return this.policy.setProbability(step.state, action, probability);
+        });
+
+        await Promise.all(futures);
       }
     }
   }

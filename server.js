@@ -1,3 +1,3 @@
-const server = require('./dist/server').default;
+const run = require('./dist/server').default;
 
-server.run();
+run();

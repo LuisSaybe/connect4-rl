@@ -6,6 +6,7 @@ module.exports = function() {
     target: 'node',
     externals: [nodeExternals()],
     entry: [
+      'babel-polyfill',
       path.resolve(__dirname, 'src/js/Server.js')
     ],
     output: {
@@ -36,11 +37,12 @@ module.exports = function() {
                   'no-console': 0
                 },
                 parserOptions: {
-                  ecmaVersion: 7,
+                  ecmaVersion: 8,
                   sourceType: 'module',
                   ecmaFeatures: {
                     modules: true,
-                    classes: true
+                    classes: true,
+                    experimentalObjectRestSpread: true
                   }
                 },
                 globals: [

@@ -21,10 +21,4 @@ elif [ -z $WATCH ]; then
   cd $SOURCE_DIRECTORY
   nginx -c /root/nginx.conf
   node server.js
-else
-  cd $SOURCE_DIRECTORY
-  rm -rf node_modules
-  yarn
-  nginx -c /root/nginx.conf
-  npm run watch
 fi

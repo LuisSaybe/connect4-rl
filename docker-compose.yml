@@ -5,6 +5,7 @@ services:
     image: connect4-rl
     ports:
       - "8080:8080"
+      - "80:80"
     volumes:
       - .:/root/connect4-rl
     networks:

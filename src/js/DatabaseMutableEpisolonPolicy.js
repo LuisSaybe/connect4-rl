@@ -3,10 +3,10 @@ import StochasticHelper from 'js/StochasticHelper';
 export default class DatabaseMutableEpisolonPolicy {
   static collectionName = 'policy';
 
-  constructor(epsilon, actions, id, db) {
+  constructor(epsilon, actions, policyId, db) {
     this.epsilon = epsilon;
     this.actions = actions;
-    this.id = id;
+    this.policyId = policyId;
     this.db = db;
   }
 
@@ -14,11 +14,18 @@ export default class DatabaseMutableEpisolonPolicy {
     this.epsilon = epsilon;
   }
 
-  getActionProbabilities(state, action) {
-    const collection = db.collection(DatabaseMutableEpisolonPolicy.collectionName);
+  async getActionProbabilities(state) {
+    const collection = this.db.collection(DatabaseMutableEpisolonPolicy.collectionName);
+    const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);
+
+    const futures = this.actions.map((action, index) => {
+      return this.setProbability(state, action, probabilities[index]);
+    });
+
+    await Promise.all(futures);
 
     return new Promise((resolve, reject) => {
-      collection.find({_ id : this.id, state }).toArray((err, documents) => {
+      collection.find({policyId : this.policyId, state }).toArray((err, documents) => {
         if (err) {
           reject(err);
         } else {
@@ -35,17 +42,17 @@ export default class DatabaseMutableEpisolonPolicy {
   }
 
   setProbability(state, action, probability) {
-    const collection = db.collection(DatabaseMutableEpisolonPolicy.collectionName);
+    const collection = this.db.collection(DatabaseMutableEpisolonPolicy.collectionName);
 
     return new Promise((resolve, reject) => {
       collection.updateOne(
         {
-          _id: this.id
+          policyId: this.policyId,
+          state,
+          action
         },
         {
           $set: {
-            state,
-            action,
             probability
           }
         },
@@ -62,7 +69,7 @@ export default class DatabaseMutableEpisolonPolicy {
     });
   }
 
-  getNextAction(state, unavailableActions) {
+  async getNextAction(state, unavailableActions) {
     const random = Math.random() < this.epsilon;
 
     if (random) {
@@ -70,8 +77,9 @@ export default class DatabaseMutableEpisolonPolicy {
       return StochasticHelper.arrayRandom(selection);
     }
 
-    const probabilities = this.getActionProbabilities(state);
-    const actions = Object.keys(probabilities).map(action => Number(action));
+    const probabilities = await this.getActionProbabilities(state);
+
+    const actions = Object.keys(probabilities).map(Number);
     const probabilitiesAsArray = actions.map(action => probabilities[action]);
     const result = StochasticHelper.selectFromProbabilityDistribution(
       probabilitiesAsArray,
@@ -80,13 +88,5 @@ export default class DatabaseMutableEpisolonPolicy {
     );
 
     return result;
-  }
-
-  setProbabilities(state, action, probability) {
-    if (!this.policy.hasOwnProperty(state)) {
-      this.policy[state] = {};
-    }
-
-    this.policy[state][action] = probability;
   }
 }

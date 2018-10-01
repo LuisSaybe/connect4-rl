@@ -11,44 +11,45 @@ export default class MutableEpsilonlonPolicy {
     this.epsilon = epsilon;
   }
 
-  getActionProbabilities(state) {
+  async getActionProbability(state) {
     if (!this.policy.hasOwnProperty(state)) {
       const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);
-      this.actions.forEach((action, index) => this.setProbabilities(state, action, probabilities[index]));
+      const futures = this.actions.map((action, index) => this.setProbability(state, action, probabilities[index]));
+      await Promise.all(futures);
     }
 
-    return this.policy[state];
+    return Promise.resolve(this.policy[state]);
   }
 
-  getProbability(state, action) {
-    return this.policy[state][action];
-  }
-
-  getNextAction(state, unavailableActions) {
+  async getNextAction(state, unavailableActions) {
     const random = Math.random() < this.epsilon;
+
+    let result;
 
     if (random) {
       const selection = this.actions.filter(action => !unavailableActions.includes(action));
-      return StochasticHelper.arrayRandom(selection);
-    }
+      result = StochasticHelper.arrayRandom(selection);
+    } else {
+      const probabilities = await this.getActionProbability(state);
 
-    const probabilities = this.getActionProbabilities(state);
-    const actions = Object.keys(probabilities).map(action => Number(action));
-    const probabilitiesAsArray = actions.map(action => probabilities[action]);
-    const result = StochasticHelper.selectFromProbabilityDistribution(
-      probabilitiesAsArray,
-      actions,
-      unavailableActions
-    );
+      const actions = Object.keys(probabilities).map(Number);
+      const probabilitiesAsArray = actions.map(action => probabilities[action]);
+      result = StochasticHelper.selectFromProbabilityDistribution(
+        probabilitiesAsArray,
+        actions,
+        unavailableActions
+      );
+    }
 
     return result;
   }
 
-  setProbabilities(state, action, probability) {
+  setProbability(state, action, probability) {
     if (!this.policy.hasOwnProperty(state)) {
       this.policy[state] = {};
     }
 
     this.policy[state][action] = probability;
+    return Promise.resolve();
   }
 }
