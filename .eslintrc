@@ -25,7 +25,8 @@
     "fetch": true,
     "window": true,
     "location": true,
-    "URLSearchParams": true
+    "URLSearchParams": true,
+    "Promise": true
   },
   "settings": {
     "react": {
