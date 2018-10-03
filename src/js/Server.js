@@ -12,6 +12,7 @@ const run = () => {
   mongodb.MongoClient.connect('mongodb://mongo:27017', { useNewUrlParser: true }, async (err, client) => {
     const db = client.db('connect4-js');
     const collection = db.collection(DatabaseMutableEpisolonPolicy.collectionName);
+    collection.createIndex({policyId: 1, state : 1});
     collection.createIndex({policyId: 1, state : 1, action: 1}, {unique:true});
 
     const trainer = new Connect4MonteCarloTrainer(db);

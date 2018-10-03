@@ -36,7 +36,7 @@ export default class Connect4MonteCarloTrainer {
 
   async getPolicyFromCompetition(episodesCount, opponentPolicy, epsilon) {
     const agentColor = Board.RED;
-    let agentPolicy = new DatabaseMutableEpisolonPolicy(
+    const agentPolicy = new DatabaseMutableEpisolonPolicy(
       epsilon,
       Board.ACTIONS,
       new mongodb.ObjectID(),
@@ -73,7 +73,7 @@ export default class Connect4MonteCarloTrainer {
         agentWins++;
       }
 
-      updater.update(episode);
+      await updater.update(episode);
     }
 
     return {

@@ -14,15 +14,8 @@ export default class DatabaseMutableEpisolonPolicy {
     this.epsilon = epsilon;
   }
 
-  async getActionProbabilities(state) {
+  getActionProbabilitiesHelper(state) {
     const collection = this.db.collection(DatabaseMutableEpisolonPolicy.collectionName);
-    const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);
-
-    const futures = this.actions.map((action, index) => {
-      return this.setProbability(state, action, probabilities[index]);
-    });
-
-    await Promise.all(futures);
 
     return new Promise((resolve, reject) => {
       collection.find({policyId : this.policyId, state }).toArray((err, documents) => {
@@ -41,6 +34,23 @@ export default class DatabaseMutableEpisolonPolicy {
     });
   }
 
+  async getActionProbabilities(state) {
+    let result = await this.getActionProbabilitiesHelper(state);
+
+    if (Object.keys(result).length === 0) {
+      const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);
+
+      const futures = this.actions.map((action, index) => {
+        return this.setProbability(state, action, probabilities[index]);
+      });
+
+      await Promise.all(futures);
+      result = await this.getActionProbabilitiesHelper(state);
+    }
+
+    return result;
+  }
+
   setProbability(state, action, probability) {
     const collection = this.db.collection(DatabaseMutableEpisolonPolicy.collectionName);
 
@@ -53,6 +63,9 @@ export default class DatabaseMutableEpisolonPolicy {
         },
         {
           $set: {
+            policyId: this.policyId,
+            state,
+            action,
             probability
           }
         },
