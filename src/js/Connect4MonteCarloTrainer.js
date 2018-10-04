@@ -1,6 +1,6 @@
 import mongodb from 'mongodb';
 import DatabaseMutableEpisolonPolicy from 'js/DatabaseMutableEpisolonPolicy';
-import OnPolicyFirstVisitMonteCarloControl from 'js/OnPolicyFirstVisitMonteCarloControl';
+import DatabaseOnPolicyFirstVisitMonteCarloControl from 'js/DatabaseOnPolicyFirstVisitMonteCarloControl';
 import Board from 'js/Board';
 import Game from 'js/Game';
 import Environment from 'js/Environment';
@@ -42,7 +42,7 @@ export default class Connect4MonteCarloTrainer {
       new mongodb.ObjectID(),
       this.db
     );
-    const updater = new OnPolicyFirstVisitMonteCarloControl(agentPolicy, epsilon);
+    const updater = new DatabaseOnPolicyFirstVisitMonteCarloControl(this.db, agentPolicy, epsilon);
 
     let agentWins = 0;
     let measurements = [];

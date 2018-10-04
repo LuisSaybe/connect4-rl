@@ -1,7 +1,7 @@
 export default class Average {
-  constructor(initial = Math.random()) {
-    this.average = initial;
-    this.count = 1;
+  constructor(average = Math.random(), count = 1) {
+    this.average = average;
+    this.count = count;
   }
 
   append(number) {
