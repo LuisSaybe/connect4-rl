@@ -15,7 +15,7 @@ export default class MutableEpsilonlonPolicy {
     if (!this.policy.hasOwnProperty(state)) {
       const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);
       const result = {};
-      const futures = this.actions.forEach((action, index) => result[action] = probabilities[index]);
+      this.actions.forEach((action, index) => result[action] = probabilities[index]);
       this.policy[state] = result;
     }
 
