@@ -6,8 +6,9 @@ import Game from 'js/Game';
 import Environment from 'js/Environment';
 
 export default class Connect4MonteCarloTrainer {
-  constructor(db) {
+  constructor(db, onMessage) {
     this.db = db;
+    this.onMessage = onMessage;
   }
 
   async getPolicy(matches, episodesPerMatch, epsilon) {
@@ -19,7 +20,7 @@ export default class Connect4MonteCarloTrainer {
     );
 
     for (let index = 0; index < matches; index++) {
-      console.log('match ' + index);
+      this.onMessage('match ' + index);
 
       const { policy } = await this.getPolicyFromCompetition(
         episodesPerMatch,
@@ -55,7 +56,7 @@ export default class Connect4MonteCarloTrainer {
           episode: index,
         });
 
-        console.log(measurements[measurements.length - 1]);
+        this.onMessage(measurements[measurements.length - 1]);
 
         agentWins = 0;
       }

@@ -18,17 +18,11 @@ export default class DatabaseMutableEpisolonPolicy {
     const collection = this.db.collection(DatabaseMutableEpisolonPolicy.collectionName);
 
     return new Promise((resolve, reject) => {
-      collection.find({policyId : this.policyId, state }).toArray((err, documents) => {
+      collection.find({policyId : this.policyId, state }).toArray((err, document) => {
         if (err) {
           reject(err);
         } else {
-          const actionToProbabilities = {};
-
-          for (const document of documents) {
-            actionToProbabilities[document.action] = document.probability;
-          }
-
-          resolve(actionToProbabilities);
+          resolve(document);
         }
       });
     });
@@ -39,19 +33,20 @@ export default class DatabaseMutableEpisolonPolicy {
 
     if (Object.keys(result).length === 0) {
       const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);
+      const actionProbabilities = {};
 
-      const futures = this.actions.map((action, index) => {
-        return this.setProbability(state, action, probabilities[index]);
+      this.actions.forEach((action, index) => {
+        actionProbabilities[action] = probabilities[index];
       });
 
-      await Promise.all(futures);
-      result = await this.getActionProbabilitiesHelper(state);
+      await this.setProbabilities(state, actionProbabilities);
+      result = actionProbabilities;
     }
 
     return result;
   }
 
-  setProbability(state, action, probability) {
+  setProbabilities(state, probabilities) {
     const collection = this.db.collection(DatabaseMutableEpisolonPolicy.collectionName);
 
     return new Promise((resolve, reject) => {
@@ -59,14 +54,13 @@ export default class DatabaseMutableEpisolonPolicy {
         {
           policyId: this.policyId,
           state,
-          action
         },
         {
           $set: {
             policyId: this.policyId,
             state,
             action,
-            probability
+            probabilities
           }
         },
         {

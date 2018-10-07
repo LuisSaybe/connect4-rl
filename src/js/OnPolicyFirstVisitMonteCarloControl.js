@@ -34,6 +34,7 @@ export default class OnPolicyFirstVisitMonteCarloControl {
 
         const { action: bestAction } = actionReturns[actionReturns.length - 1];
 
+        const actionProbabilities = {};
         const futures = Environment.getActions().map(action => {
           let probability;
 
@@ -49,8 +50,10 @@ export default class OnPolicyFirstVisitMonteCarloControl {
             probability = 0;
           }
 
-          return this.policy.setProbability(step.state, action, probability);
+          actionProbabilities[action] = probability;
         });
+
+        this.policy.setProbabilities(step.state, actionProbabilities);
 
         await Promise.all(futures);
       }
