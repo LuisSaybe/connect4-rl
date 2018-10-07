@@ -23,52 +23,49 @@ export default class Connect4MonteCarloTrainer {
     this.onMessage('collection ' + episodesCount + ' episodes');
     const episodes = await this.getUniqueEpisodes(policy, policy, episodesCount);
 
+    const every = Math.floor(episodes.length / 50);
+
     for (let index = 0; index < episodes.length; index++) {
-      this.onMessage('update episode ' + index);
+      if (index % every === 0) {
+        this.onMessage(`${index} / ${episodes.length}`);
+      }
       await updater.update(episodes[index].series);
     }
 
-    this.onMessage('training done with ' + episodesCount + ' episodes');
-
+    this.onMessage('training done with collected ' + episodes.length + ' episodes');
     return { policy };
   }
 
   async getUniqueEpisodes(agentPolicy, opponentPolicy, episodesCount) {
-    const episodesVisited = new Set();
-    const episodes = []
     const futures = [];
 
     for (let index = 0; index < episodesCount; index++) {
       const firstColor = index % 2 === 0 ? Board.YELLOW : Board.RED;
 
-      const future = new Promise((resolve) => {
-        Connect4MonteCarloTrainer.getEpisode(agentPolicy, opponentPolicy, Board.RED, firstColor).then((episode) => {
-          const serialized = episode.serialize();
-
-          if (episodesVisited.has(serialized)) {
-            console.log('seen!', serialized);
-          } else {
-            episodesVisited.add(serialized);
-            episodes.push(episode);
-          }
-
-          resolve();
-        });
-      });
-
-      futures.push(future);
+      futures.push(
+        Connect4MonteCarloTrainer.getEpisode(agentPolicy, opponentPolicy, Board.RED, firstColor)
+      );
     }
 
-    await Promise.all(futures);
+    const episodes = [];
+
+    for (const future of futures) {
+      const { agentEpisode, opponentEpisode } = await future;
+      episodes.push(agentEpisode, opponentEpisode);
+    }
 
     return episodes;
   }
 
   static async getEpisode(agentPolicy, opponentPolicy, agentColor, firstColor) {
     const game = new Game(firstColor, 4);
+    const opponentColor = Board.oppositeColor(agentColor);
     let previousAgentAction = null;
     let previousAgentState = null;
-    const episode = new Episode();
+    let previousOpponentAction = null;
+    let previousOpponentState = null;
+    const agentEpisode = new Episode();
+    const opponentEpisode = new Episode();
 
     while (game.getAvailableActions().length > 0) {
       const currentTurn = game.getTurn();
@@ -79,26 +76,38 @@ export default class Connect4MonteCarloTrainer {
       if (currentTurn === agentColor) {
         previousAgentAction = action;
         previousAgentState = state;
+      } else if (currentTurn === opponentColor) {
+        previousOpponentAction = action;
+        previousOpponentState = state;
       }
 
       const [ x, y ] = game.drop(action, currentTurn);
 
       if (game.connects(x, y, currentTurn)) {
-        let reward;
+        let agentReward;
+        let opponentReward;
 
         if (currentTurn === agentColor) {
-          reward = Environment.WIN_REWARD;
+          agentReward = Environment.WIN_REWARD;
+          opponentReward = Environment.LOSE_REWARD;
         } else {
-          reward = Environment.LOSE_REWARD;
+          agentReward = Environment.LOSE_REWARD;
+          opponentReward = Environment.WIN_REWARD;
         }
 
-        episode.append(previousAgentState, previousAgentAction, reward);
+        agentEpisode.append(previousAgentState, previousAgentAction, agentReward);
+        opponentEpisode.append(previousOpponentState, previousOpponentAction, opponentReward);
         break;
       } else if (currentTurn === agentColor) {
-        episode.append(state, action, Environment.DEFAULT_REWARD);
+        agentEpisode.append(state, action, Environment.DEFAULT_REWARD);
+      } else if (currentTurn === opponentColor) {
+        opponentEpisode.append(state, action, Environment.DEFAULT_REWARD);
       }
     }
 
-    return episode;
+    return {
+      agentEpisode,
+      opponentEpisode
+    };
   }
 }
