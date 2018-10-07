@@ -11,11 +11,12 @@ export default class MutableEpsilonlonPolicy {
     this.epsilon = epsilon;
   }
 
-  async getActionProbability(state) {
+  getActionProbabilities(state) {
     if (!this.policy.hasOwnProperty(state)) {
       const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);
-      const futures = this.actions.map((action, index) => this.setProbability(state, action, probabilities[index]));
-      await Promise.all(futures);
+      const result = {};
+      const futures = this.actions.forEach((action, index) => result[action] = probabilities[index]);
+      this.policy[state] = result;
     }
 
     return Promise.resolve(this.policy[state]);
@@ -44,12 +45,8 @@ export default class MutableEpsilonlonPolicy {
     return result;
   }
 
-  setProbability(state, action, probability) {
-    if (!this.policy.hasOwnProperty(state)) {
-      this.policy[state] = {};
-    }
-
-    this.policy[state][action] = probability;
+  setProbabilities(state, probabilities) {
+    this.policy[state] = probabilities;
     return Promise.resolve();
   }
 }

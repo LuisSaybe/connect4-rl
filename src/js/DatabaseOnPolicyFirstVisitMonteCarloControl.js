@@ -36,8 +36,9 @@ export default class DatabaseOnPolicyFirstVisitMonteCarloControl {
             .sort((a, b) => a.average - b.average);
 
         const { action: bestAction } = actionReturns[actionReturns.length - 1];
+        const actionProbabilities = {};
 
-        const futures = Environment.getActions().map(action => {
+        Environment.getActions().forEach((action) => {
           let probability;
 
           if (availableActions.includes(action)) {
@@ -52,10 +53,10 @@ export default class DatabaseOnPolicyFirstVisitMonteCarloControl {
             probability = 0;
           }
 
-          return this.policy.setProbability(step.state, action, probability);
+          actionProbabilities[action] = probability;
         });
 
-        await Promise.all(futures);
+        await this.policy.setProbabilities(step.state, actionProbabilities);
       }
     }
   }

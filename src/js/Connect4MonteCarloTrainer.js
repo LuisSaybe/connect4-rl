@@ -1,9 +1,9 @@
-import mongodb from 'mongodb';
 import DatabaseMutableEpisolonPolicy from 'js/DatabaseMutableEpisolonPolicy';
 import DatabaseOnPolicyFirstVisitMonteCarloControl from 'js/DatabaseOnPolicyFirstVisitMonteCarloControl';
 import Board from 'js/Board';
 import Game from 'js/Game';
 import Environment from 'js/Environment';
+import Episode from 'js/Episode';
 
 export default class Connect4MonteCarloTrainer {
   constructor(db, onMessage) {
@@ -11,85 +11,64 @@ export default class Connect4MonteCarloTrainer {
     this.onMessage = onMessage;
   }
 
-  async getPolicy(matches, episodesPerMatch, epsilon) {
-    let opponentPolicy = new DatabaseMutableEpisolonPolicy(
-      0,
-      Board.ACTIONS,
-      new mongodb.ObjectID(),
-      this.db
+  async train(epsilon = 0.1, episodesCount) {
+    const policy = new DatabaseMutableEpisolonPolicy(
+      this.db,
+      epsilon,
+      Board.ACTIONS
     );
 
-    for (let index = 0; index < matches; index++) {
-      this.onMessage('match ' + index);
+    const updater = new DatabaseOnPolicyFirstVisitMonteCarloControl(this.db, policy, epsilon);
 
-      const { policy } = await this.getPolicyFromCompetition(
-        episodesPerMatch,
-        opponentPolicy,
-        epsilon
-      );
+    this.onMessage('collection ' + episodesCount + ' episodes');
+    const episodes = await this.getUniqueEpisodes(policy, policy, episodesCount);
 
-      policy.setEpsilon(0);
-      opponentPolicy = policy;
+    for (let index = 0; index < episodes.length; index++) {
+      this.onMessage('update episode ' + index);
+      await updater.update(episodes[index].series);
     }
 
-    return { policy: opponentPolicy };
+    this.onMessage('training done with ' + episodesCount + ' episodes');
+
+    return { policy };
   }
 
-  async getPolicyFromCompetition(episodesCount, opponentPolicy, epsilon) {
-    const agentColor = Board.RED;
-    const agentPolicy = new DatabaseMutableEpisolonPolicy(
-      epsilon,
-      Board.ACTIONS,
-      new mongodb.ObjectID(),
-      this.db
-    );
-    const updater = new DatabaseOnPolicyFirstVisitMonteCarloControl(this.db, agentPolicy, epsilon);
-
-    let agentWins = 0;
-    let measurements = [];
-    const measureEvery = Math.floor(episodesCount / 20);
+  async getUniqueEpisodes(agentPolicy, opponentPolicy, episodesCount) {
+    const episodesVisited = new Set();
+    const episodes = []
+    const futures = [];
 
     for (let index = 0; index < episodesCount; index++) {
-      if (index % measureEvery === 0 && index !== 0) {
-        measurements.push({
-          winRate: agentWins / measureEvery,
-          episode: index,
+      const firstColor = index % 2 === 0 ? Board.YELLOW : Board.RED;
+
+      const future = new Promise((resolve) => {
+        Connect4MonteCarloTrainer.getEpisode(agentPolicy, opponentPolicy, Board.RED, firstColor).then((episode) => {
+          const serialized = episode.serialize();
+
+          if (episodesVisited.has(serialized)) {
+            console.log('seen!', serialized);
+          } else {
+            episodesVisited.add(serialized);
+            episodes.push(episode);
+          }
+
+          resolve();
         });
+      });
 
-        this.onMessage(measurements[measurements.length - 1]);
-
-        agentWins = 0;
-      }
-
-      const firstColor = index % 2 == 0 ? Board.YELLOW : Board.RED;
-
-      const { agentWin, episode } = await Connect4MonteCarloTrainer.collectEpisode(
-        agentPolicy,
-        opponentPolicy,
-        agentColor,
-        firstColor
-      );
-
-      if (agentWin) {
-        agentWins++;
-      }
-
-      await updater.update(episode);
+      futures.push(future);
     }
 
-    return {
-      policy: agentPolicy,
-      measurements
-    };
+    await Promise.all(futures);
+
+    return episodes;
   }
 
-  static async collectEpisode(agentPolicy, opponentPolicy, agentColor, firstColor) {
+  static async getEpisode(agentPolicy, opponentPolicy, agentColor, firstColor) {
     const game = new Game(firstColor, 4);
-    const episode = [];
     let previousAgentAction = null;
     let previousAgentState = null;
-    let agentWin = false;
-    let opponentWin = false;
+    const episode = new Episode();
 
     while (game.getAvailableActions().length > 0) {
       const currentTurn = game.getTurn();
@@ -108,28 +87,18 @@ export default class Connect4MonteCarloTrainer {
         let reward;
 
         if (currentTurn === agentColor) {
-          agentWin = true;
           reward = Environment.WIN_REWARD;
         } else {
-          opponentWin = true;
           reward = Environment.LOSE_REWARD;
         }
 
-        episode.push({
-          state: previousAgentState,
-          action: previousAgentAction,
-          reward
-        });
+        episode.append(previousAgentState, previousAgentAction, reward);
         break;
       } else if (currentTurn === agentColor) {
-        episode.push({state, action, reward: Environment.DEFAULT_REWARD});
+        episode.append(state, action, Environment.DEFAULT_REWARD);
       }
     }
 
-    return {
-      episode,
-      agentWin,
-      opponentWin,
-    };
+    return episode;
   }
 }

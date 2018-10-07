@@ -1,9 +1,10 @@
 import StochasticHelper from 'js/StochasticHelper';
+import mongodb from 'mongodb';
 
 export default class DatabaseMutableEpisolonPolicy {
   static collectionName = 'policy';
 
-  constructor(epsilon, actions, policyId, db) {
+  constructor(db, epsilon, actions, policyId = new mongodb.ObjectID()) {
     this.epsilon = epsilon;
     this.actions = actions;
     this.policyId = policyId;
@@ -18,11 +19,12 @@ export default class DatabaseMutableEpisolonPolicy {
     const collection = this.db.collection(DatabaseMutableEpisolonPolicy.collectionName);
 
     return new Promise((resolve, reject) => {
-      collection.find({policyId : this.policyId, state }).toArray((err, document) => {
+      collection.findOne({policyId : this.policyId, state }, (err, document) => {
         if (err) {
           reject(err);
         } else {
-          resolve(document);
+          const result = document === null ? null : document.probabilities;
+          resolve(result);
         }
       });
     });
@@ -31,7 +33,7 @@ export default class DatabaseMutableEpisolonPolicy {
   async getActionProbabilities(state) {
     let result = await this.getActionProbabilitiesHelper(state);
 
-    if (Object.keys(result).length === 0) {
+    if (result === null) {
       const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);
       const actionProbabilities = {};
 
@@ -59,7 +61,6 @@ export default class DatabaseMutableEpisolonPolicy {
           $set: {
             policyId: this.policyId,
             state,
-            action,
             probabilities
           }
         },
