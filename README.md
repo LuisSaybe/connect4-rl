@@ -8,10 +8,11 @@ docker build --rm -t connect4-rl .
 ```
 
 
-### mount volume and start nginx
+### run
 
 ```sh
-docker run -it -p 80:80 -p 8080:8080 --rm -v $(pwd):/root/connect4-rl --name connect4-rl connect4-rl
+docker-compose down
+docker-compose up
 ```
 
 ### watch for web changes
@@ -24,10 +25,4 @@ npm run watch-web
 
 ```sh
 npm run watch-server
-```
-
-### run from github
-
-```sh
-docker run -it -p 80:80 -p 8080:8080 --rm --name connect4-rl connect4-rl
 ```

@@ -1,20 +1,18 @@
 export default class Episode {
   constructor() {
-    this.series = [];
+    this.sars = [];
+    this.serialization = null;
+    this.seriesId = null;
+    this.policyId = null;
   }
 
   append(state, action, reward) {
-    this.series.push({state, action, reward});
+    this.sars.push({state, action, reward});
   }
 
   serialize() {
-    let string = '';
-
-    for (const { state, action, reward } of this.series) {
-      const prefix = string === '' ? '' : '|';
-      string += `${prefix}${state},${action},${reward}`;
-    }
-
-    return string;
+    return JSON.stringify(
+      this.sars.map(({ state, action, reward }) => [state, action, reward])
+    );
   }
 }

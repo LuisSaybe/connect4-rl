@@ -13,6 +13,8 @@ services:
     depends_on:
       - mongo
   mongo:
+    volumes:
+      - /Users/luis/Documents/troisio/connect4js/data/db:/data/db
     image: mongo:4.1.3
     networks:
       - backend

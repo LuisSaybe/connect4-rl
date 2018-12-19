@@ -51,6 +51,7 @@ module.exports = function() {
                   'console',
                   '__dirname',
                   'Promise',
+                  'setTimeout'
                 ],
                 baseConfig: {
                   extends: ['eslint:recommended']

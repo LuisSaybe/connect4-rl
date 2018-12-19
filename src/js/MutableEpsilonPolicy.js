@@ -7,10 +7,6 @@ export default class MutableEpsilonlonPolicy {
     this.actions = actions;
   }
 
-  setEpsilon(epsilon) {
-    this.epsilon = epsilon;
-  }
-
   getActionProbabilities(state) {
     if (!this.policy.hasOwnProperty(state)) {
       const probabilities = StochasticHelper.getRandomProbabilityDistribution(this.actions.length);

@@ -17,7 +17,7 @@ if [ ! -d $SOURCE_DIRECTORY ]; then
   npm run build
   nginx -c /root/nginx.conf
   node server.js
-elif [ -z $WATCH ]; then
+else
   cd $SOURCE_DIRECTORY
   nginx -c /root/nginx.conf
   node server.js

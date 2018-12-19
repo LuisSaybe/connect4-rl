@@ -1,55 +1,109 @@
 import express from 'express';
 import mongodb from 'mongodb';
+import bodyParser from 'body-parser';
+
 import Board from 'js/Board';
-import Connect4MonteCarloTrainer from 'js/Connect4MonteCarloTrainer';
+import {
+  getDatabase,
+  POLICY_ACTION_PROBABILITIES_COLLECTION,
+  POLICY_COLLECTION,
+  EPISODE_COLLECTION
+} from 'js/database';
 import DatabaseMutableEpisolonPolicy from 'js/DatabaseMutableEpisolonPolicy';
-import DatabaseOnPolicyFirstVisitMonteCarloControl from 'js/DatabaseOnPolicyFirstVisitMonteCarloControl';
+import { EpisodeService } from 'js/EpisodeService';
+import { PolicyService } from 'js/PolicyService';
 
 const app = express();
-app.get('/', (req, res) => res.send('Hello World!'));
-
-const getDatabase = async () => {
-  return new Promise((resolve, reject) => {
-    mongodb.MongoClient.connect('mongodb://mongo:27017', { useNewUrlParser: true }, async (err, client) => {
-      if (err) {
-        return reject(err);
-      }
-
-      const db = client.db('connect4-rl');
-      const collection = db.collection(DatabaseMutableEpisolonPolicy.collectionName);
-      collection.createIndex({policyId: 1, state : 1}, {unique:true});
-
-      const stateActionAverageCollection = db.collection(DatabaseOnPolicyFirstVisitMonteCarloControl.stateActionAverageCollectionName);
-      stateActionAverageCollection.createIndex({controlId: 1, state : 1, action: 1}, {unique:true});
-
-      resolve(db);
-    });
-  });
-};
+app.use(bodyParser.json());
 
 const run = async () => {
+  await new Promise(resolve => setTimeout(resolve, 10000));
   const db = await getDatabase();
-  const trainer = new Connect4MonteCarloTrainer(db, (message) => {
-    console.log(new Date());
-    console.log(message);
+
+  app.post('/policy', async (req, res) => {
+    const policyService = new PolicyService(db);
+    const epsilon = Number(req.body.epsilon);
+
+    if (Number.isNaN(epsilon) || epsilon < 0 || epsilon > 1) {
+      res.sendStatus(400);
+    }
+
+    const { value } = await policyService.save({
+      _id: new mongodb.ObjectID(),
+      actions: Board.ACTIONS,
+      epsilon
+    });
+
+    res.json(value);
   });
 
-  app.get('/train/:episodes', async (req, res) => {
-    res.status(200).send('training started!');
+  app.post('/policy/:policyId/play/:episodes', async (req, res) => {
+    const policy = await db.collection(POLICY_COLLECTION)
+      .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
 
-    const { policy } = await trainer.train(0.1, Number(req.params.episodes));
-    console.log('policy', policy);
+    if (policy === null) {
+      res.sendStatus(404);
+      return;
+    }
+
+    const service = new EpisodeService(db);
+    const seriesId = new mongodb.ObjectID();
+    const episodes = Number(req.params.episodes);
+    const maximum = Math.pow(10, 8);
+
+    if (Number.isNaN(episodes) || episodes < 0 || episodes > maximum) {
+      res.sendStatus(400);
+    }
+
+    service.generateEpisodes(policy._id, seriesId, episodes);
+
+    res.json({ seriesId });
+  });
+
+  app.get('/policy/:policyId', async (req, res) => {
+    const policy = await db.collection(POLICY_COLLECTION)
+      .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
+
+    if (policy === null) {
+      res.sendStatus(404);
+      return;
+    }
+
+    const sap = await db.collection(POLICY_ACTION_PROBABILITIES_COLLECTION)
+      .find({ policyId: policy._id })
+      .count();
+
+    const series = await db.collection(EPISODE_COLLECTION)
+      .distinct('seriesId', { policyId: policy._id });
+
+    res.json({ policy, sap, series });
   });
 
   app.get(`/policy/:policyId/:state`, async (req, res) => {
+    const { epsilon, actions } = await db.collection(POLICY_COLLECTION)
+      .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
+
+    if (policy === null) {
+      res.sendStatus(404);
+      return;
+    }
+
     const policy = new DatabaseMutableEpisolonPolicy(
       db,
-      0,
-      Board.ACTIONS,
-      new mongodb.ObjectId(req.params.policyId)
+      epsilon,
+      actions,
+      policy._id
     );
     const probabilities = await policy.getActionProbabilities(req.params.state);
     res.json(probabilities);
+  });
+
+  app.get(`/episode/:seriesId`, async (req, res) => {
+    const count = await db.collection(EPISODE_COLLECTION)
+      .find({ seriesId: new mongodb.ObjectID(req.params.seriesId) })
+      .count();
+
+    res.json({ count });
   });
 
   app.listen(8080, () => console.log('app listening!'));

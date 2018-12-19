@@ -1,71 +1,60 @@
 import DatabaseMutableEpisolonPolicy from 'js/DatabaseMutableEpisolonPolicy';
-import DatabaseOnPolicyFirstVisitMonteCarloControl from 'js/DatabaseOnPolicyFirstVisitMonteCarloControl';
 import Board from 'js/Board';
 import Game from 'js/Game';
 import Environment from 'js/Environment';
 import Episode from 'js/Episode';
+import { EPISODE_COLLECTION, POLICY_COLLECTION } from 'js/database';
 
-export default class Connect4MonteCarloTrainer {
-  constructor(db, onMessage) {
+export class EpisodeService {
+  constructor(db) {
     this.db = db;
-    this.onMessage = onMessage;
   }
 
-  async train(epsilon = 0.1, episodesCount) {
+  async generateEpisodes(policyId, seriesId, episodesCount) {
+    const { epsilon, actions } = await this.db.collection(POLICY_COLLECTION)
+      .findOne({ _id: policyId });
     const policy = new DatabaseMutableEpisolonPolicy(
       this.db,
       epsilon,
-      Board.ACTIONS
+      actions,
+      policyId
     );
 
-    const updater = new DatabaseOnPolicyFirstVisitMonteCarloControl(this.db, policy, epsilon);
-
-    this.onMessage('collection ' + episodesCount + ' episodes');
-    const episodes = await this.getUniqueEpisodes(policy, policy, episodesCount);
-
-    const every = Math.floor(episodes.length / 50);
-
-    for (let index = 0; index < episodes.length; index++) {
-      if (index % every === 0) {
-        this.onMessage(`${index} / ${episodes.length}`);
-      }
-      await updater.update(episodes[index].series);
-    }
-
-    this.onMessage('training done with collected ' + episodes.length + ' episodes');
-    return { policy };
+    await this.saveEpisodesIntoDatabase(policy, policy, episodesCount, seriesId);
+    return { seriesId, policy };
   }
 
-  async getUniqueEpisodes(agentPolicy, opponentPolicy, episodesCount) {
-    const futures = [];
-
+  async saveEpisodesIntoDatabase(agentPolicy, opponentPolicy, episodesCount, seriesId) {
     for (let index = 0; index < episodesCount; index++) {
       const firstColor = index % 2 === 0 ? Board.YELLOW : Board.RED;
-
-      futures.push(
-        Connect4MonteCarloTrainer.getEpisode(agentPolicy, opponentPolicy, Board.RED, firstColor)
+      const { agentEpisode, opponentEpisode } = await EpisodeService.getEpisode(
+        agentPolicy,
+        opponentPolicy,
+        Board.RED,
+        firstColor
       );
+
+      agentEpisode.seriesId = seriesId;
+      agentEpisode.policyId = agentPolicy.policyId;
+      opponentEpisode.seriesId = seriesId;
+      opponentEpisode.policyId = opponentPolicy.policyId;
+
+      const agentSaveFuture = this.save(agentEpisode);
+      const opponentSaveFuture = this.save(opponentEpisode);
+      await agentSaveFuture;
+      await opponentSaveFuture;
     }
-
-    const episodes = [];
-
-    for (const future of futures) {
-      const { agentEpisode, opponentEpisode } = await future;
-      episodes.push(agentEpisode, opponentEpisode);
-    }
-
-    return episodes;
   }
 
   static async getEpisode(agentPolicy, opponentPolicy, agentColor, firstColor) {
     const game = new Game(firstColor, 4);
     const opponentColor = Board.oppositeColor(agentColor);
+    const agentEpisode = new Episode();
+    const opponentEpisode = new Episode();
     let previousAgentAction = null;
     let previousAgentState = null;
     let previousOpponentAction = null;
     let previousOpponentState = null;
-    const agentEpisode = new Episode();
-    const opponentEpisode = new Episode();
 
     while (game.getAvailableActions().length > 0) {
       const currentTurn = game.getTurn();
@@ -105,9 +94,27 @@ export default class Connect4MonteCarloTrainer {
       }
     }
 
+    agentEpisode.serialization = agentEpisode.serialize();
+    opponentEpisode.serialization = opponentEpisode.serialize();
+
     return {
       agentEpisode,
       opponentEpisode
     };
+  }
+
+  save(episode) {
+    return this.db.collection(EPISODE_COLLECTION).updateOne({
+      serialization: episode.serialization,
+      seriesId: episode.seriesId
+    }, {
+      $set: {
+        sars: episode.sars,
+        policyId: episode.policyId,
+        created: new Date()
+      }
+    }, {
+      upsert: true
+    });
   }
 }
