@@ -28,7 +28,6 @@ export default class MutableEpsilonlonPolicy {
       result = StochasticHelper.arrayRandom(selection);
     } else {
       const probabilities = await this.getActionProbability(state);
-
       const actions = Object.keys(probabilities).map(Number);
       const probabilitiesAsArray = actions.map(action => probabilities[action]);
       result = StochasticHelper.selectFromProbabilityDistribution(

@@ -1,16 +1,14 @@
 import mongodb from 'mongodb';
 import Environment from 'js/Environment';
 import Average from 'js/Average';
+import { STATE_ACTION_AVERAGE_COLLECTION } from 'js/database';
 
-export default class DatabaseOnPolicyFirstVisitMonteCarloControl {
-  static stateActionAverageCollectionName = 'state_action_average';
-
-  constructor(db, policy, epsilon, gamma = 1, controlId = new mongodb.ObjectID()) {
+export class DatabaseOnPolicyFirstVisitMonteCarloControl {
+  constructor(db, policy, gamma = 1, sessionId = new mongodb.ObjectID()) {
     this.db = db;
     this.policy = policy;
-    this.epsilon = epsilon;
     this.gamma = gamma;
-    this.controlId = controlId;
+    this.sessionId = sessionId;
   }
 
   async update(episode) {
@@ -38,14 +36,14 @@ export default class DatabaseOnPolicyFirstVisitMonteCarloControl {
         const { action: bestAction } = actionReturns[actionReturns.length - 1];
         const actionProbabilities = {};
 
-        Environment.getActions().forEach((action) => {
+        this.policy.actions.forEach((action) => {
           let probability;
 
           if (availableActions.includes(action)) {
-            const denominator = this.epsilon / availableActions.length;
+            const denominator = this.policy.epsilon / availableActions.length;
 
             if (bestAction === action) {
-              probability = 1 - this.epsilon + denominator;
+              probability = 1 - this.policy.epsilon + denominator;
             } else {
               probability = denominator;
             }
@@ -62,7 +60,7 @@ export default class DatabaseOnPolicyFirstVisitMonteCarloControl {
   }
 
   async appendAverageReturn(state, action, returnInstance) {
-    const collection = this.db.collection(DatabaseOnPolicyFirstVisitMonteCarloControl.stateActionAverageCollectionName);
+    const collection = this.db.collection(STATE_ACTION_AVERAGE_COLLECTION);
     const oldAverageReturnDB = await this.getAverageReturnHelper(state, action);
 
     let newAverageReturn;
@@ -74,57 +72,42 @@ export default class DatabaseOnPolicyFirstVisitMonteCarloControl {
       newAverageReturn.append(returnInstance);
     }
 
-    return new Promise((resolve, reject) => {
-      collection.updateOne(
-        {
-          controlId: this.controlId,
+    return collection.findOneAndUpdate(
+      {
+        state,
+        action,
+        sessionId: this.sessionId,
+      },
+      {
+        $set: {
           state,
-          action
-        },
-        {
-          $set: {
-            controlId: this.controlId,
-            state,
-            action,
-            average: newAverageReturn.average,
-            count: newAverageReturn.count
-          }
-        },
-        {
-          upsert: true
-        }, function(err, r) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(r);
-          }
+          action,
+          sessionId: this.sessionId,
+          average: newAverageReturn.average,
+          count: newAverageReturn.count
         }
-      );
-    });
+      },
+      {
+        returnOriginal: false,
+        upsert: true
+      }
+    );
   }
 
   getAverageReturnHelper(state, action) {
-    const collection = this.db.collection(DatabaseOnPolicyFirstVisitMonteCarloControl.stateActionAverageCollectionName);
-
-    return new Promise((resolve, reject) => {
-      collection.findOne({controlId: this.controlId, state, action }, (err, document) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(document);
-        }
-      });
-    });
+    const collection = this.db.collection(STATE_ACTION_AVERAGE_COLLECTION);
+    return collection.findOne({sessionId: this.sessionId, state, action });
   }
 
   async getAverageReturn(state, action) {
     let document = await this.getAverageReturnHelper(state, action);
 
     if (document === null) {
-      await this.appendAverageReturn(state, action, new Average().average);
+      const { value } = await this.appendAverageReturn(state, action, new Average().average);
+      document = value;
     }
 
-    return this.getAverageReturnHelper(state, action);
+    return document;
   }
 
   static stepAppearsInSeries(step, series) {

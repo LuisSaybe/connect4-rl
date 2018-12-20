@@ -7,7 +7,9 @@ export class PolicyService {
 
   save(policy) {
     return this.db.collection(POLICY_COLLECTION).findOneAndUpdate(
-        { _id: policy._id },
+        {
+          _id: policy._id
+        },
         {
           $set: {
             epsilon: policy.epsilon,

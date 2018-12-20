@@ -25,8 +25,8 @@ export default class DatabaseMutableEpisolonPolicy {
         newProbability[action] = probabilities[index];
       });
 
-      await this.setProbabilities(state, newProbability);
-      result = await this.getActionProbabilitiesHelper(state);
+      const { value } = await this.setProbabilities(state, newProbability);
+      result = value;
     }
 
     return result.probabilities;
@@ -35,7 +35,7 @@ export default class DatabaseMutableEpisolonPolicy {
   async setProbabilities(state, probabilities) {
     const collection = this.db.collection(POLICY_ACTION_PROBABILITIES_COLLECTION);
 
-    return await collection.updateOne(
+    return await collection.findOneAndUpdate(
       {
         policyId: this.policyId,
         state,
@@ -46,6 +46,7 @@ export default class DatabaseMutableEpisolonPolicy {
         }
       },
       {
+        returnOriginal: false,
         upsert: true
       }
     );

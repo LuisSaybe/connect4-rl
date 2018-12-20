@@ -1,30 +1,15 @@
-import DatabaseMutableEpisolonPolicy from 'js/DatabaseMutableEpisolonPolicy';
 import Board from 'js/Board';
 import Game from 'js/Game';
 import Environment from 'js/Environment';
 import Episode from 'js/Episode';
-import { EPISODE_COLLECTION, POLICY_COLLECTION } from 'js/database';
+import { EPISODE_COLLECTION } from 'js/database';
 
 export class EpisodeService {
   constructor(db) {
     this.db = db;
   }
 
-  async generateEpisodes(policyId, seriesId, episodesCount) {
-    const { epsilon, actions } = await this.db.collection(POLICY_COLLECTION)
-      .findOne({ _id: policyId });
-    const policy = new DatabaseMutableEpisolonPolicy(
-      this.db,
-      epsilon,
-      actions,
-      policyId
-    );
-
-    await this.saveEpisodesIntoDatabase(policy, policy, episodesCount, seriesId);
-    return { seriesId, policy };
-  }
-
-  async saveEpisodesIntoDatabase(agentPolicy, opponentPolicy, episodesCount, seriesId) {
+  async generateEpisodes(agentPolicy, opponentPolicy, episodesCount, seriesId) {
     for (let index = 0; index < episodesCount; index++) {
       const firstColor = index % 2 === 0 ? Board.YELLOW : Board.RED;
       const { agentEpisode, opponentEpisode } = await EpisodeService.getEpisode(
@@ -35,9 +20,7 @@ export class EpisodeService {
       );
 
       agentEpisode.seriesId = seriesId;
-      agentEpisode.policyId = agentPolicy.policyId;
       opponentEpisode.seriesId = seriesId;
-      opponentEpisode.policyId = opponentPolicy.policyId;
 
       const agentSaveFuture = this.save(agentEpisode);
       const opponentSaveFuture = this.save(opponentEpisode);
@@ -94,6 +77,8 @@ export class EpisodeService {
       }
     }
 
+    agentEpisode.policyId = agentPolicy.policyId;
+    opponentEpisode.policyId = opponentPolicy.policyId;
     agentEpisode.serialization = agentEpisode.serialize();
     opponentEpisode.serialization = opponentEpisode.serialize();
 
@@ -104,7 +89,7 @@ export class EpisodeService {
   }
 
   save(episode) {
-    return this.db.collection(EPISODE_COLLECTION).updateOne({
+    return this.db.collection(EPISODE_COLLECTION).findOneAndUpdate({
       serialization: episode.serialization,
       seriesId: episode.seriesId
     }, {
@@ -114,6 +99,7 @@ export class EpisodeService {
         created: new Date()
       }
     }, {
+      returnOriginal: false,
       upsert: true
     });
   }
