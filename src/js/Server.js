@@ -8,7 +8,6 @@ import {
   POLICY_ACTION_PROBABILITIES_COLLECTION,
   POLICY_COLLECTION,
   EPISODE_COLLECTION,
-  STATE_ACTION_AVERAGE_COLLECTION,
   SESSION_COLLECTION
 } from 'js/database';
 import DatabaseMutableEpisolonPolicy from 'js/DatabaseMutableEpisolonPolicy';
@@ -17,7 +16,7 @@ import { EpisodeService } from 'js/EpisodeService';
 import { PolicyService } from 'js/PolicyService';
 import Environment from 'js/Environment';
 
-const DEFAULT_BATCH_SIZE = 3000;
+export const DEFAULT_BATCH_SIZE = 3000;
 
 const app = express();
 app.use(bodyParser.json());
@@ -39,6 +38,36 @@ const run = async () => {
       _id: new mongodb.ObjectID(),
       actions: Board.ACTIONS,
       epsilon
+    });
+
+    res.json(value);
+  });
+
+  app.post('/policy/:policyId', async (req, res) => {
+    const policy = await db.collection(POLICY_COLLECTION)
+      .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
+
+    if (policy === null) {
+      res.sendStatus(404);
+      return;
+    }
+
+    const $set = {};
+
+    if (req.body.hasOwnProperty('epsilon')) {
+      const epsilon = Number(req.body.epsilon);
+
+      if (!Number.isNaN(epsilon) && epsilon >= 0 && epsilon <= 1) {
+        $set.epsilon = epsilon;
+      }
+    }
+
+    const { value } = await db.collection(POLICY_COLLECTION).findOneAndUpdate({
+      _id: policy._id
+    }, {
+      $set
+    }, {
+      returnOriginal: false
     });
 
     res.json(value);
@@ -72,32 +101,8 @@ const run = async () => {
       return;
     }
 
-    const _id = new mongodb.ObjectID();
     const service = new PolicyService(db);
-    const { value: newPolicy } = await service.save({
-      _id,
-      epsilon: policy.epsilon,
-      actions: policy.actions
-    });
-
-    const databasePolicy = new DatabaseMutableEpisolonPolicy(
-      db,
-      policy.epsilon,
-      policy.actions,
-      _id
-    );
-
-    const cursor = await db.collection(POLICY_ACTION_PROBABILITIES_COLLECTION)
-      .find({
-        policyId: policy._id
-      }, {
-        batchSize: DEFAULT_BATCH_SIZE
-      });
-
-    cursor.forEach(document => {
-      databasePolicy.setProbabilities(document.state, document.probabilities);
-    });
-
+    const newPolicy = await service.clone(policy._id);
     res.json(newPolicy);
   });
 
@@ -142,6 +147,13 @@ const run = async () => {
       .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
 
     if (policy === null) {
+      res.sendStatus(404);
+      return;
+    }
+
+    const valid = RegExp(`[${Board.NONE}${Board.YELLOW}${Board.RED}]+`).test(req.params.state);
+
+    if (!valid) {
       res.sendStatus(404);
       return;
     }
@@ -194,23 +206,25 @@ const run = async () => {
       sessionId
     );
 
-    res.json({ sessionId });
-
-    const session = db.collection(SESSION_COLLECTION)
+    await db.collection(SESSION_COLLECTION)
       .insertOne({
+        _id: sessionId,
         count,
         start: new Date(),
         type: 'MONTE_CARLO_ON_POLICY_FIRST_VISIT'
       });
 
+    res.json({ sessionId });
+
     let index = 0;
+    const every = Math.floor(count / 100);
 
     for (let episode = await cursor.next(); episode != null; episode = await cursor.next(), index++) {
       await monteCarloControl.update(episode.sars);
 
-      if (index % 1000 === 0) {
+      if (index % every === 0) {
         db.collection(SESSION_COLLECTION).updateOne({
-          _id: session._id
+          _id: sessionId
         }, {
           $set: { index }
         });
@@ -218,7 +232,7 @@ const run = async () => {
     }
 
     db.collection(SESSION_COLLECTION).updateOne({
-      _id: session._id
+      _id: sessionId
     }, {
       $set: {
         end: new Date()
@@ -227,14 +241,10 @@ const run = async () => {
   });
 
   app.get(`/session/:id`, async (req, res) => {
-    const cursor = await db.collection(STATE_ACTION_AVERAGE_COLLECTION)
-      .find({ sessionId: new mongodb.ObjectID(req.params.id) })
-      .limit(100);
+    const session = await db.collection(SESSION_COLLECTION)
+      .findOne({ _id: new mongodb.ObjectID(req.params.id) });
 
-    res.json({
-      count: await cursor.count(),
-      data: await cursor.toArray()
-    });
+    res.json(session);
   });
 
   app.get(`/series/:seriesId`, async (req, res) => {
