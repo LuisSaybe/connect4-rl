@@ -1,4 +1,4 @@
-export default class Episode {
+export class Episode {
   constructor() {
     this.sars = [];
     this.serialization = null;

@@ -7,8 +7,8 @@ module.exports = function() {
   return {
     entry: [
       'babel-polyfill',
-      path.resolve(__dirname, 'src/js/index.jsx'),
-      path.resolve(__dirname, 'src/sass/index.scss'),
+      path.resolve(__dirname, 'src/js/web/index.jsx'),
+      path.resolve(__dirname, 'src/js/web/sass/index.scss'),
     ],
     output: {
       path: path.resolve(__dirname, 'dist'),
@@ -17,7 +17,7 @@ module.exports = function() {
     plugins: [
       new HtmlWebpackPlugin({
         version: packageJson.version,
-        template: path.resolve(__dirname, 'src/index-template.html'),
+        template: path.resolve(__dirname, 'src/js/web/index-template.html'),
         inject: false
       }),
       new MiniCssExtractPlugin({

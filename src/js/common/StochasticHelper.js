@@ -1,4 +1,4 @@
-export default class StochasticHelper {
+export class StochasticHelper {
   static arrayRandom(subject) {
     return subject[Math.floor(Math.random() * subject.length)];
   }

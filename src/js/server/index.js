@@ -2,21 +2,23 @@ import express from 'express';
 import mongodb from 'mongodb';
 import bodyParser from 'body-parser';
 
-import Board from 'js/Board';
+import { Board } from 'js/common/Board';
+import { Environment } from 'js/common/Environment';
+
 import {
   getDatabase,
   POLICY_ACTION_PROBABILITIES_COLLECTION,
   POLICY_COLLECTION,
   EPISODE_COLLECTION,
   SESSION_COLLECTION
-} from 'js/database';
-import DatabaseMutableEpisolonPolicy from 'js/DatabaseMutableEpisolonPolicy';
-import { DatabaseOnPolicyFirstVisitMonteCarloControl } from 'js/DatabaseOnPolicyFirstVisitMonteCarloControl';
-import { EpisodeService } from 'js/EpisodeService';
-import { PolicyService } from 'js/PolicyService';
-import Environment from 'js/Environment';
+} from 'js/server/database';
+import { DatabaseMutableEpsilonPolicy } from 'js/server/DatabaseMutableEpsilonPolicy';
+import { DatabaseOnPolicyFirstVisitMonteCarloControl } from 'js/server/DatabaseOnPolicyFirstVisitMonteCarloControl';
+import { EpisodeService } from 'js/server/EpisodeService';
+import { PolicyService } from 'js/server/PolicyService';
 
 export const DEFAULT_BATCH_SIZE = 3000;
+export const DEFAULT_LIMIT = 100;
 
 const app = express();
 app.use(bodyParser.json());
@@ -82,14 +84,44 @@ const run = async () => {
       return;
     }
 
-    const sap = await db.collection(POLICY_ACTION_PROBABILITIES_COLLECTION)
+    const states = await db.collection(POLICY_ACTION_PROBABILITIES_COLLECTION)
       .find({ policyId: policy._id })
       .count();
 
-    const series = await db.collection(EPISODE_COLLECTION)
-      .distinct('seriesId', { policyId: policy._id });
+    res.json({ policy, states });
+  });
 
-    res.json({ policy, sap, series });
+  app.get('/policy/:policyId/series', async (req, res) => {
+    const result = await db.collection(EPISODE_COLLECTION).aggregate([
+      {
+        $match: {
+          policyId: new mongodb.ObjectID(req.params.policyId)
+        }
+      },
+      {
+        $group: {
+          _id: '$seriesId',
+          created: { $max: '$created' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { created: -1 } },
+      { $limit: DEFAULT_LIMIT }
+    ], {
+      allowDiskUse: true
+    }).toArray();
+
+    res.json(result);
+  });
+
+  app.get('/policy', async (_, res) => {
+    const policies = await db.collection(POLICY_COLLECTION)
+      .find({}, {
+        sort: [ [ 'created', -1 ] ],
+        limit: DEFAULT_LIMIT
+      }).toArray();
+
+    res.json(policies);
   });
 
   app.post('/policy/:policyId/clone', async (req, res) => {
@@ -118,13 +150,13 @@ const run = async () => {
       return;
     }
 
-    const firstDatabasePolicy = new DatabaseMutableEpisolonPolicy(
+    const firstDatabasePolicy = new DatabaseMutableEpsilonPolicy(
       db,
       firstPolicy.epsilon,
       firstPolicy.actions,
       firstPolicy._id
     );
-    const secondDatabasePolicy = new DatabaseMutableEpisolonPolicy(
+    const secondDatabasePolicy = new DatabaseMutableEpsilonPolicy(
       db,
       secondPolicy.epsilon,
       secondPolicy.actions,
@@ -158,7 +190,7 @@ const run = async () => {
       return;
     }
 
-    const policy = new DatabaseMutableEpisolonPolicy(
+    const policy = new DatabaseMutableEpsilonPolicy(
       db,
       epsilon,
       actions,
@@ -177,7 +209,7 @@ const run = async () => {
       return;
     }
 
-    const policy = new DatabaseMutableEpisolonPolicy(
+    const policy = new DatabaseMutableEpsilonPolicy(
       db,
       document.epsilon,
       document.actions,
@@ -244,6 +276,11 @@ const run = async () => {
     const session = await db.collection(SESSION_COLLECTION)
       .findOne({ _id: new mongodb.ObjectID(req.params.id) });
 
+    if (session === null) {
+        res.sendStatus(404);
+        return;
+    }
+
     res.json(session);
   });
 
@@ -267,30 +304,57 @@ const run = async () => {
           _id: '$policyId',
           rewards: { $push : '$sar.reward' }
         }
+      },
+      {
+        $project: {
+          _id: '$_id',
+          win: {
+            $size: {
+              $filter: {
+                input: '$rewards',
+                as: 'reward',
+                cond: { $eq: ['$$reward', Environment.WIN_REWARD] }
+              }
+            }
+          },
+          loss: {
+            $size: {
+              $filter: {
+                input: '$rewards',
+                as: 'reward',
+                cond: { $eq: ['$$reward', Environment.LOSE_REWARD] }
+              }
+            }
+          },
+          default: {
+            $size: {
+              $filter: {
+                input: '$rewards',
+                as: 'reward',
+                cond: { $eq: ['$$reward', Environment.DEFAULT_REWARD] }
+              }
+            }
+          }
+        }
       }
     ], {
       allowDiskUse: true
     }).toArray();
 
-    const statistics = policyRewards.map(({ rewards, _id }) => {
-      const wins = rewards.filter(reward => reward === Environment.WIN_REWARD).length;
-      const losses = rewards.filter(reward => reward === Environment.LOSE_REWARD).length;
-      const ties = rewards.filter(reward => reward === Environment.DEFAULT_REWARD).length;
+    const data = policyRewards.map(rewardCount => {
+      const total = rewardCount.win + rewardCount.loss + rewardCount.default;
 
       return {
-        policyId: _id,
-        wins,
-        winRate: wins / rewards.length,
-        losses,
-        lossRate: losses / rewards.length,
-        ties,
-        tieRate: ties / rewards.length
+        winRate: rewardCount.win / total,
+        lossRate: rewardCount.loss / total,
+        defaultRate: rewardCount.default / total,
+        ...rewardCount,
       };
     });
 
     res.json({
       count,
-      statistics
+      data
     });
   });
 

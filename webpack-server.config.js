@@ -7,7 +7,7 @@ module.exports = function() {
     externals: [nodeExternals()],
     entry: [
       'babel-polyfill',
-      path.resolve(__dirname, 'src/js/Server.js')
+      path.resolve(__dirname, 'src/js/server/index.js')
     ],
     output: {
       path: path.resolve(__dirname, 'dist'),

@@ -1,7 +1,7 @@
-import StochasticHelper from 'js/StochasticHelper';
-import { POLICY_ACTION_PROBABILITIES_COLLECTION } from 'js/database';
+import { StochasticHelper } from 'js/common/StochasticHelper';
+import { POLICY_ACTION_PROBABILITIES_COLLECTION } from 'js/server/database';
 
-export default class DatabaseMutableEpisolonPolicy {
+export class DatabaseMutableEpsilonPolicy {
   constructor(db, epsilon, actions, policyId) {
     this.epsilon = epsilon;
     this.actions = actions;

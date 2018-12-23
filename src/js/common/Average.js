@@ -1,4 +1,4 @@
-export default class Average {
+export class Average {
   constructor(average = Math.random(), count = 1) {
     this.average = average;
     this.count = count;

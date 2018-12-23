@@ -1,8 +1,8 @@
-import Board from 'js/Board';
-import Game from 'js/Game';
-import Environment from 'js/Environment';
-import Episode from 'js/Episode';
-import { EPISODE_COLLECTION } from 'js/database';
+import { Board } from 'js/common/Board';
+import { Game } from 'js/common/Game';
+import { Environment } from 'js/common/Environment';
+import { Episode } from 'js/common/Episode';
+import { EPISODE_COLLECTION } from 'js/server/database';
 
 export class EpisodeService {
   constructor(db) {

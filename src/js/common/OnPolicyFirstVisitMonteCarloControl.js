@@ -1,5 +1,5 @@
-import Environment from 'js/Environment';
-import Average from 'js/Average';
+import { Environment } from 'js/common/Environment';
+import { Average } from 'js/common/Average';
 
 export default class OnPolicyFirstVisitMonteCarloControl {
   constructor(policy, epsilon, gamma = 1) {

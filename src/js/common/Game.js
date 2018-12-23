@@ -1,6 +1,6 @@
-import Board from 'js/Board';
+import { Board } from 'js/common/Board';
 
-export default class Game {
+export class Game {
   constructor(turn, lengthToWin) {
     this.turn = turn;
     this.lengthToWin = lengthToWin;

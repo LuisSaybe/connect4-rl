@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "description": "Connect 4 with reinforcement learning",
   "scripts": {
-    "build": "webpack --mode=production && webpack --config webpack-server.config.js --mode=production",
-    "watch-web": "webpack --watch --mode=development",
+    "build": "webpack --config webpack-web.config.js --mode=production && webpack --config webpack-server.config.js --mode=production",
+    "watch-web": "webpack --config webpack-web.config.js --watch --mode=development",
     "watch-server": "webpack --watch --config webpack-server.config.js --mode=development",
     "test": "jest-webpack --clearCache && jest-webpack"
   },
@@ -35,7 +35,7 @@
     "jest-webpack": "^0.5.1",
     "mini-css-extract-plugin": "^0.4.3",
     "mongodb": "^3.1.10",
-    "node-sass": "^4.9.3",
+    "node-sass": "^4.11.0",
     "postcss-loader": "^3.0.0",
     "prop-types": "^15.6.2",
     "react": "^16.6.3",

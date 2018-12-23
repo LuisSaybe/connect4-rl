@@ -1,4 +1,4 @@
-export default class Board {
+export class Board {
   static NONE = 0;
   static YELLOW = 1;
   static RED = 2;

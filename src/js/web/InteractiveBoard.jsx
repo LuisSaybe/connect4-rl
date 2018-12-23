@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Board from 'js/Board';
 
-export default class InteractiveBoard extends React.Component {
+export class InteractiveBoard extends React.Component {
   static propTypes = {
     game: PropTypes.object.isRequired,
     onColumnClick: PropTypes.func.isRequired

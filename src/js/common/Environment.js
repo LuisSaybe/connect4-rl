@@ -1,6 +1,6 @@
-import Board from 'js/Board';
+import { Board } from 'js/common/Board';
 
-export default class Environment {
+export class Environment {
   static AGENT_COLOR = 0;
   static ADVERSARY_COLOR = 1;
   static NONE = 2;

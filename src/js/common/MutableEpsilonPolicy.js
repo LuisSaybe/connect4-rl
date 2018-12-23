@@ -1,4 +1,4 @@
-import StochasticHelper from 'js/StochasticHelper';
+import { StochasticHelper } from 'js/common/StochasticHelper';
 
 export default class MutableEpsilonlonPolicy {
   constructor(epsilon, actions) {

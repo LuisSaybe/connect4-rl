@@ -1,7 +1,7 @@
 import mongodb from 'mongodb';
-import Environment from 'js/Environment';
-import Average from 'js/Average';
-import { STATE_ACTION_AVERAGE_COLLECTION } from 'js/database';
+import { Environment } from 'js/common/Environment';
+import { Average } from 'js/common/Average';
+import { STATE_ACTION_AVERAGE_COLLECTION } from 'js/server/database';
 
 export class DatabaseOnPolicyFirstVisitMonteCarloControl {
   constructor(db, policy, gamma = 1, sessionId = new mongodb.ObjectID()) {
