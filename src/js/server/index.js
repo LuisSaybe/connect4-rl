@@ -20,8 +20,25 @@ import { PolicyService } from 'js/server/PolicyService';
 export const DEFAULT_BATCH_SIZE = 3000;
 export const DEFAULT_LIMIT = 100;
 
+const objectIdRegex = '[a-f\\d]{24}';
+const stateRegex = `[${Environment.AGENT_COLOR}${Environment.ADVERSARY_COLOR}${Environment.NONE}]{${6 * 7}}`
 const app = express();
 app.use(bodyParser.json());
+app.use((req, res, next) => {
+  const origin = req.headers['origin'];
+  const requestHeaders = req.headers['access-control-request-headers'];
+  const hasValidOrigin = ['http://127.0.0.1'].includes(origin);
+
+  if (hasValidOrigin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+
+  if (requestHeaders) {
+    res.header('Access-Control-Allow-Headers', requestHeaders);
+  }
+
+  next();
+});
 
 const run = async () => {
   await new Promise(resolve => setTimeout(resolve, 10000));
@@ -75,7 +92,7 @@ const run = async () => {
     res.json(value);
   });
 
-  app.get('/policy/:policyId', async (req, res) => {
+  app.get(`/policy/:policyId(${objectIdRegex})`, async (req, res) => {
     const policy = await db.collection(POLICY_COLLECTION)
       .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
 
@@ -85,8 +102,7 @@ const run = async () => {
     }
 
     const states = await db.collection(POLICY_ACTION_PROBABILITIES_COLLECTION)
-      .find({ policyId: policy._id })
-      .count();
+      .countDocuments({ policyId: policy._id });
 
     res.json({ policy, states });
   });
@@ -174,7 +190,7 @@ const run = async () => {
     });
   });
 
-  app.get(`/policy/:policyId/:state`, async (req, res) => {
+  app.get(`/policy/:policyId/:state(${stateRegex})`, async (req, res) => {
     const { _id, epsilon, actions } = await db.collection(POLICY_COLLECTION)
       .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
 
@@ -243,7 +259,8 @@ const run = async () => {
         _id: sessionId,
         count,
         start: new Date(),
-        type: 'MONTE_CARLO_ON_POLICY_FIRST_VISIT'
+        type: 'MONTE_CARLO_ON_POLICY_FIRST_VISIT',
+        sessionId: document._id
       });
 
     res.json({ sessionId });
@@ -258,7 +275,10 @@ const run = async () => {
         db.collection(SESSION_COLLECTION).updateOne({
           _id: sessionId
         }, {
-          $set: { index }
+          $set: {
+            index,
+            updated: new Date()
+          }
         });
       }
     }
@@ -287,7 +307,7 @@ const run = async () => {
   app.get(`/series/:seriesId`, async (req, res) => {
     const collection = await db.collection(EPISODE_COLLECTION);
     const seriesId = new mongodb.ObjectID(req.params.seriesId);
-    const count = await collection.find({ seriesId }).count();
+    const count = await collection.countDocuments({ seriesId });
 
     const policyRewards = await collection.aggregate([
       { $match: { seriesId } },

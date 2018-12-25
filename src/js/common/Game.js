@@ -48,14 +48,20 @@ export class Game {
     return null;
   }
 
-  getTurn() {
-    return this.turn;
+  hasWinner() {
+    for (let column = 0; column < this.getColumns(); column++) {
+      for (let row = 0; row < this.getRows(); row++) {
+        if (this.connects(row, column, Board.YELLOW) || this.connects(row, column, Board.RED)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
-  static deserialize() {
-    const game = new Game();
-
-    return game;
+  getTurn() {
+    return this.turn;
   }
 
   connects(x, y, color) {

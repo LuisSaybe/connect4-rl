@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import Board from 'js/Board';
+import { Board } from 'js/common/Board';
 
 export class InteractiveBoard extends React.Component {
   static propTypes = {

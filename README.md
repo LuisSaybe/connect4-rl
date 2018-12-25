@@ -8,7 +8,7 @@ docker build --rm -t connect4-rl .
 ```
 
 
-### run
+### run from github
 
 ```sh
 docker-compose down

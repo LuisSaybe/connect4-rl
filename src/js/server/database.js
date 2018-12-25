@@ -13,10 +13,11 @@ export const getDatabase = async () => {
 
   const sessionCollection = db.collection(SESSION_COLLECTION);
   await sessionCollection.createIndex({ created: 1 });
+  await sessionCollection.createIndex({ policyId: 1 });
 
   const policyActionProbabilities = db.collection(POLICY_ACTION_PROBABILITIES_COLLECTION);
   await policyActionProbabilities.createIndex({  policyId: 1, state : 1 }, { unique:true });
-  await policyActionProbabilities.createIndex({  policyId: 1 });
+  await policyActionProbabilities.createIndex({ policyId: 1 });
 
   const stateActionAverageCollection = db.collection(STATE_ACTION_AVERAGE_COLLECTION);
   await stateActionAverageCollection.createIndex({ sessionId: 1, state : 1, action: 1 }, { unique:true });
