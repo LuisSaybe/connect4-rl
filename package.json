@@ -5,8 +5,7 @@
   "scripts": {
     "build": "webpack --config webpack-web.config.js --mode=production && webpack --config webpack-server.config.js --mode=production",
     "watch-web": "webpack --config webpack-web.config.js --watch --mode=development",
-    "watch-server": "webpack --watch --config webpack-server.config.js --mode=development",
-    "test": "jest-webpack --clearCache && jest-webpack"
+    "watch-server": "webpack --watch --config webpack-server.config.js --mode=development"
   },
   "author": "luis@trois.io",
   "license": "MIT",
