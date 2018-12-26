@@ -27,9 +27,8 @@ app.use(bodyParser.json());
 app.use((req, res, next) => {
   const origin = req.headers['origin'];
   const requestHeaders = req.headers['access-control-request-headers'];
-  const hasValidOrigin = ['http://127.0.0.1'].includes(origin);
 
-  if (hasValidOrigin) {
+  if (origin) {
     res.header('Access-Control-Allow-Origin', origin);
   }
 
