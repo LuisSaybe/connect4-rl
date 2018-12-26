@@ -8,7 +8,6 @@ import settings from 'js/settings.json';
 
 import {
   getDatabase,
-  POLICY_ACTION_PROBABILITIES_COLLECTION,
   POLICY_COLLECTION,
   EPISODE_COLLECTION,
   SESSION_COLLECTION
@@ -154,10 +153,7 @@ const run = async () => {
       return;
     }
 
-    const states = await db.collection(POLICY_ACTION_PROBABILITIES_COLLECTION)
-      .countDocuments({ policyId: policy._id });
-
-    res.json({ policy, states });
+    res.json({ policy });
   });
 
   app.get('/policy/:policyId/series', async (req, res) => {
