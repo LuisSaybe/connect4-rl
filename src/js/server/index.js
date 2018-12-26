@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 
 import { Board } from 'js/common/Board';
 import { Environment } from 'js/common/Environment';
+import settings from 'js/settings.json';
 
 import {
   getDatabase,
@@ -40,56 +41,109 @@ app.use((req, res, next) => {
 });
 
 const run = async () => {
-  await new Promise(resolve => setTimeout(resolve, 10000));
+  await new Promise(resolve => setTimeout(resolve, 12000));
   const db = await getDatabase();
 
-  app.post('/policy', async (req, res) => {
-    const policyService = new PolicyService(db);
-    const epsilon = Number(req.body.epsilon);
+  if (!settings.disableWrite) {
+    app.post('/policy/:policyId/clone', async (req, res) => {
+      const policy = await db.collection(POLICY_COLLECTION)
+        .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
 
-    if (Number.isNaN(epsilon) || epsilon < 0 || epsilon > 1) {
-      res.sendStatus(400);
-      return;
-    }
+      if (policy === null) {
+        res.sendStatus(404);
+        return;
+      }
 
-    const { value } = await policyService.save({
-      _id: new mongodb.ObjectID(),
-      actions: Board.ACTIONS,
-      epsilon
+      const service = new PolicyService(db);
+      const newPolicy = await service.clone(policy._id);
+      res.json(newPolicy);
     });
 
-    res.json(value);
-  });
+    app.post('/episode/:policyId1/:policyId2/:count', async (req, res) => {
+      const firstPolicy = await db.collection(POLICY_COLLECTION)
+        .findOne({ _id: new mongodb.ObjectID(req.params.policyId1) });
 
-  app.post('/policy/:policyId', async (req, res) => {
-    const policy = await db.collection(POLICY_COLLECTION)
-      .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
+      const secondPolicy = await db.collection(POLICY_COLLECTION)
+        .findOne({ _id: new mongodb.ObjectID(req.params.policyId2) });
 
-    if (policy === null) {
-      res.sendStatus(404);
-      return;
-    }
+      if (firstPolicy === null || secondPolicy === null) {
+        res.sendStatus(404);
+        return;
+      }
 
-    const $set = {};
+      const firstDatabasePolicy = new DatabaseMutableEpsilonPolicy(
+        db,
+        firstPolicy.epsilon,
+        firstPolicy.actions,
+        firstPolicy._id
+      );
+      const secondDatabasePolicy = new DatabaseMutableEpsilonPolicy(
+        db,
+        secondPolicy.epsilon,
+        secondPolicy.actions,
+        secondPolicy._id
+      );
 
-    if (req.body.hasOwnProperty('epsilon')) {
+      const service = new EpisodeService(db);
+      const seriesId = new mongodb.ObjectID();
+
+      const count = Number(req.params.count);
+      service.generateEpisodes(firstDatabasePolicy, secondDatabasePolicy, count, seriesId);
+
+      res.json({
+        seriesId
+      });
+    });
+
+    app.post('/policy', async (req, res) => {
+      const policyService = new PolicyService(db);
       const epsilon = Number(req.body.epsilon);
 
-      if (!Number.isNaN(epsilon) && epsilon >= 0 && epsilon <= 1) {
-        $set.epsilon = epsilon;
+      if (Number.isNaN(epsilon) || epsilon < 0 || epsilon > 1) {
+        res.sendStatus(400);
+        return;
       }
-    }
 
-    const { value } = await db.collection(POLICY_COLLECTION).findOneAndUpdate({
-      _id: policy._id
-    }, {
-      $set
-    }, {
-      returnOriginal: false
+      const { value } = await policyService.save({
+        _id: new mongodb.ObjectID(),
+        actions: Board.ACTIONS,
+        epsilon
+      });
+
+      res.json(value);
     });
 
-    res.json(value);
-  });
+    app.post('/policy/:policyId', async (req, res) => {
+      const policy = await db.collection(POLICY_COLLECTION)
+        .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
+
+      if (policy === null) {
+        res.sendStatus(404);
+        return;
+      }
+
+      const $set = {};
+
+      if (req.body.hasOwnProperty('epsilon')) {
+        const epsilon = Number(req.body.epsilon);
+
+        if (!Number.isNaN(epsilon) && epsilon >= 0 && epsilon <= 1) {
+          $set.epsilon = epsilon;
+        }
+      }
+
+      const { value } = await db.collection(POLICY_COLLECTION).findOneAndUpdate({
+        _id: policy._id
+      }, {
+        $set
+      }, {
+        returnOriginal: false
+      });
+
+      res.json(value);
+    });
+  }
+
 
   app.get(`/policy/:policyId(${objectIdRegex})`, async (req, res) => {
     const policy = await db.collection(POLICY_COLLECTION)
@@ -137,56 +191,6 @@ const run = async () => {
       }).toArray();
 
     res.json(policies);
-  });
-
-  app.post('/policy/:policyId/clone', async (req, res) => {
-    const policy = await db.collection(POLICY_COLLECTION)
-      .findOne({ _id: new mongodb.ObjectID(req.params.policyId) });
-
-    if (policy === null) {
-      res.sendStatus(404);
-      return;
-    }
-
-    const service = new PolicyService(db);
-    const newPolicy = await service.clone(policy._id);
-    res.json(newPolicy);
-  });
-
-  app.post('/episode/:policyId1/:policyId2/:count', async (req, res) => {
-    const firstPolicy = await db.collection(POLICY_COLLECTION)
-      .findOne({ _id: new mongodb.ObjectID(req.params.policyId1) });
-
-    const secondPolicy = await db.collection(POLICY_COLLECTION)
-      .findOne({ _id: new mongodb.ObjectID(req.params.policyId2) });
-
-    if (firstPolicy === null || secondPolicy === null) {
-      res.sendStatus(404);
-      return;
-    }
-
-    const firstDatabasePolicy = new DatabaseMutableEpsilonPolicy(
-      db,
-      firstPolicy.epsilon,
-      firstPolicy.actions,
-      firstPolicy._id
-    );
-    const secondDatabasePolicy = new DatabaseMutableEpsilonPolicy(
-      db,
-      secondPolicy.epsilon,
-      secondPolicy.actions,
-      secondPolicy._id
-    );
-
-    const service = new EpisodeService(db);
-    const seriesId = new mongodb.ObjectID();
-
-    const count = Number(req.params.count);
-    service.generateEpisodes(firstDatabasePolicy, secondDatabasePolicy, count, seriesId);
-
-    res.json({
-      seriesId
-    });
   });
 
   app.get(`/policy/:policyId/:state(${stateRegex})`, async (req, res) => {

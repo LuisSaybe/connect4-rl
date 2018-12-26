@@ -10,6 +10,8 @@ services:
       - backend
     depends_on:
       - mongo
+    environment:
+      - SETTINGS={"api":"http://127.0.0.1:8080","disableWrite":true}
   mongo:
     volumes:
       - ./data/db:/data/db
